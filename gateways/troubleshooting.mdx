@@ -1,0 +1,33 @@
+---
+title: Troubleshooting
+description: Operational guidance for maintenance windows, authentication failures, connectivity, and data visibility in the Gateways console.
+---
+
+## Maintenance
+
+During scheduled or emergency maintenance, the application may render a maintenance view in place of standard dashboard or authentication content. Operators may expose a dedicated route such as `/maintenance`. Retry after the maintenance interval or follow organizational status channels.
+
+## Authentication and session validity
+
+| Symptom | Response |
+| --- | --- |
+| HTTP 401 responses or redirect to sign-in | Session expired or revoked. Sign in again at `/login`. |
+| Unexpected logout | Clear browser state if the issue persists; verify clock skew if using time-based second factors. |
+
+## Network and API errors
+
+Transient failures (network loss, 5xx responses, rate limiting) may be retried automatically for resource loads. Persistent failures require verifying client connectivity (VPN, proxy, firewall) and server status.
+
+HTTP **403** indicates authorization failure. Retries do not resolve permission errors; adjust workspace role or project access.
+
+## Data visibility
+
+| Symptom | Likely cause |
+| --- | --- |
+| Empty project list | Incorrect workspace selected; new membership not yet synchronized—refresh or reselect workspace. |
+| Empty canvas | Wrong environment selected; resources exist only under another environment. |
+| Missing controls | Insufficient role permissions. |
+
+## Post-registration billing
+
+Registration URLs that include `?plan=` may trigger follow-on billing or checkout steps after authentication. If no prompt appears, verify account and workspace settings or contact the billing administrator for the organization.

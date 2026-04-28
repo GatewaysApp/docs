@@ -1,0 +1,42 @@
+---
+title: Overview
+description: How workspaces, projects, and environments fit together in Gateways, plus theming and URL conventions.
+---
+
+This page is a compact reference for **scope** and **routes**. For the full product narrative, start with **[Platform](/)**.
+
+Gateways runs at **[console.gateways.app](https://console.gateways.app)**. Sign in at **[console.gateways.app/login](https://console.gateways.app/login)**.
+
+## Scope: workspace → project → environment
+
+| Level | Purpose |
+| --- | --- |
+| **Workspace** | Team boundary: membership, invitations, billing context, and how cloud accounts are attached at the org level. |
+| **Project** | A system or application you model; may link a **cloud provider account** used to create resources. |
+| **Environment** | A partition within a project (for example staging vs production). The **canvas** loads **resources and connections** for the selected project **and** environment only. |
+
+Changing **workspace** reloads projects and clears the previous project and environment. Changing **project** or **environment** reloads data and updates the URL.
+
+## Theming
+
+Sign-in and registration screens use a **fixed dark** theme. After authentication, the console uses **system**, **light**, or **dark** (stored in the browser).
+
+## URL reference
+
+Paths are relative to your console origin (for example `https://console.gateways.app`). Segments use **project** and **environment** **slugs**.
+
+| Path | Behavior |
+| --- | --- |
+| `/` | Dashboard; project/environment selection or canvas. |
+| `/{project}/{environment}` | Architecture canvas. |
+| `/{project}/{environment}/activity` | Activity. |
+| `/{project}/{environment}/settings` | Project and environment settings. |
+| `/{project}/{environment}/account-settings` | Account UI with project context. |
+| `/projects/new` | New project (requires a selected workspace). |
+| `/account-settings` and subpaths | Global account and workspace admin. |
+
+Private or custom hostnames use the same path pattern.
+
+## Command-line interface
+
+To work from a terminal—init a folder, sign in, push code, and SSH to instances—use the **[Gateways CLI](/gateways/cli)**.

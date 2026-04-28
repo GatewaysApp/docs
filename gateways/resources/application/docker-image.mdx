@@ -1,0 +1,32 @@
+---
+title: "Application: Docker image"
+description: Deploy from a container registry or image upload—docker-image variant.
+---
+
+**Create path:** **Application** → **Docker image** (`docker-image`).
+
+## Image source
+
+**DockerImagePanel** supports two modes:
+
+| Mode | Use case |
+| --- | --- |
+| **Registry** | Reference a **container image** string (registry host, repository, tag). Typical for images already pushed to ECR, Docker Hub, GHCR, etc. |
+| **Upload** | Provide a **Docker image archive** (for example `.tar` or supported bundle) where the product allows direct upload; the UI may validate file type and size. |
+
+You also set:
+
+- **Name** and optional **description**
+- **Container port** (default commonly **80**; must match what the process listens on unless the platform maps it)
+- **Environment variables** for the container (optional JSON bulk paste; masked display for secrets where implemented)
+- **Source flag** in metadata: **`dockerImageSource`** is `registry` vs `upload` so the backend knows how to provision
+
+## Deploy
+
+Deploy triggers pull/load of the image and scheduling on your cloud (ECS, Kubernetes, VM agent—depends on deployment). The card reflects status and last deployment time from API fields such as **`updatedAt`**.
+
+## Related
+
+- Differs from **Upload app** (source code zip) in that the unit of deployment is an **image**, not extracted source + install commands.
+
+[← Application overview](/gateways/resources/application) · [Application sources](/gateways/resources/application/sources)

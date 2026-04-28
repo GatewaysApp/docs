@@ -1,0 +1,126 @@
+---
+title: "Get database metrics for the last hour (default)"
+description: "HTTP API: Get database metrics for the last hour (default)"
+---
+
+### Utility Resources (Terminals, Bucket Explorers, DB Monitors)
+
+Utility resources share a common table (`utility_resources`) and consistent CRUD patterns. Each resource type is identified by `resource_type`:
+- `terminal` — connect to instances via SSH/WebSocket
+- `bucket_explorer` — browse S3 buckets or static websites
+- `db_monitor` — attach metadata for DB health/metrics dashboards
+
+All endpoints are scoped by project/environment and require authentication unless noted.
+
+#### Create
+- `POST /api/:projectSlug/:environmentSlug/terminals`
+- `POST /api/:projectSlug/:environmentSlug/bucket-explorers`
+- `POST /api/:projectSlug/:environmentSlug/db-monitors`
+
+**Common body fields:**
+- `name` (string, required)
+- `positionX`, `positionY` (optional canvas coords)
+- `metadata` (optional JSON; used by db_monitors for config, by bucket_explorers for bucket info)
+
+Bucket explorer specifics:
+- `name` is the S3 bucket name (must follow AWS rules, globally unique). Region optional; will auto-detect when importing existing buckets.
+
+#### List
+- `GET /api/:projectSlug/:environmentSlug/terminals`
+- `GET /api/:projectSlug/:environmentSlug/bucket-explorers`
+- `GET /api/:projectSlug/:environmentSlug/db-monitors`
+
+Returns `id`, `name`, `status`, `metadata`, `position`, timestamps.
+
+#### Get one
+- `GET /api/:projectSlug/:environmentSlug/terminals/:terminalId`
+- `GET /api/:projectSlug/:environmentSlug/bucket-explorers/:bucketExplorerId`
+- `GET /api/:projectSlug/:environmentSlug/db-monitors/:monitorId`
+
+#### Update
+- `PATCH /api/:projectSlug/:environmentSlug/terminals/:terminalId`
+- `PATCH /api/:projectSlug/:environmentSlug/bucket-explorers/:bucketExplorerId`
+- `PATCH /api/:projectSlug/:environmentSlug/db-monitors/:monitorId`
+
+Updatable fields: `name`, `status`, `metadata`, `positionX`, `positionY`.
+
+#### Delete
+
+Deletion is performed **only** via the unified resources API. Use the resource’s database ID (from the list or get-one response):
+
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id). The service deletes associated `resource_connections` and then soft-deletes the utility resource.
+
+#### DB Monitor Pulse/Metrics
+- `GET /api/:projectSlug/:environmentSlug/db-monitors/:monitorId/pulse` - Get database metrics using DB monitor (CPU, connections, memory, storage, I/O, network)
+
+**Description:**
+- Fetches real-time and historical metrics from AWS CloudWatch for the connected database
+- Automatically resolves the connected database from the resource connection between the DB monitor and database
+- Returns CPU utilization, database connections, memory, storage, read/write latency, IOPS, and network throughput
+- Supports custom time ranges and aggregation periods
+- **Note:** The DB monitor must be connected to a database via resource connections for this endpoint to work
+
+**Path Parameters:**
+- `monitorId` - DB monitor database ID
+
+**Query Parameters:**
+- `startTime` (optional): ISO 8601 timestamp for start time (default: 1 hour ago)
+- `endTime` (optional): ISO 8601 timestamp for end time (default: now)
+- `period` (optional): Period in seconds for metric aggregation (default: 300 = 5 minutes, minimum: 60)
+
+**Example:**
+```bash
+# Get database metrics for the last hour (default)
+curl "https://api.gateways.app/api/codepanel/master/db-monitors/1/pulse" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get database metrics for a custom time range
+curl "https://api.gateways.app/api/codepanel/master/db-monitors/1/pulse?startTime=2024-01-15T10:00:00Z&endTime=2024-01-15T11:00:00Z&period=60" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Database metrics retrieved successfully",
+  "data": {
+    "dbMonitorId": 1,
+    "databaseId": 5,
+    "resourceId": "production-db-codepanel-master",
+    "region": "us-east-1",
+    "metrics": {
+      "cpu": 18.7,
+      "ram": 2147483648,
+      "connections": 30
+    }
+  }
+}
+```
+
+**Note:** 
+- Values are the most recent (latest) single data point from CloudWatch
+- `cpu`: CPU utilization percentage (0-100)
+- `ram`: Freeable memory in bytes
+- `connections`: Number of active database connections
+- If a metric has no data available, it will be `null`
+
+**Error Response (No Connection):**
+```json
+{
+  "error": "Database connection not found",
+  "message": "This DB monitor is not connected to any database. Please connect it to a database first."
+}
+```
+
+
+#### Positions
+All utility resources include `position` in responses and can be updated via:
+- `PATCH /api/:projectSlug/:environmentSlug/resources/:resourceId/position` (use resource’s database ID)
+
+#### Resources listing
+Utility resources are returned by:
+- `GET /api/:projectSlug/:environmentSlug/resources` (project/environment scope; filter with `type=db_monitors`, `type=bucket_explorers`, or `type=terminals`)
+- Resource detail: `GET /api/:projectSlug/:environmentSlug/resources/:resourceId` (use resource’s database ID)
+

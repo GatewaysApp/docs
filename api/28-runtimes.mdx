@@ -1,0 +1,257 @@
+---
+title: "Runtimes & Runtime Servers"
+description: "HTTP API: Runtimes & Runtime Servers"
+---
+
+# Runtimes & Runtime Servers API
+
+Runtimes represent language/runtime types (Node.js, Python, Go, Java, etc.) with versions and OS-specific install/remove scripts. Runtime resources can be created on the canvas and connected to instances; connecting a runtime to a server installs that runtime on the instance via SSH. Runtime servers are HTTP/server options per runtime type (e.g. Node → Express/Nginx/Caddy, Python → Gunicorn/Nginx).
+
+All endpoints require authentication. Runtime catalog endpoints are global; runtime resource endpoints are scoped by project and environment.
+
+---
+
+## Runtimes catalog (global)
+
+### List runtimes
+
+- **`GET /api/runtimes`**
+
+Returns active runtimes from the `runtimes` table (used for create-resource dropdown and runtime selection).
+
+**Query parameters:**
+
+| Parameter        | Type    | Default | Description                                      |
+|-----------------|---------|---------|--------------------------------------------------|
+| `includeInactive` | string | `false` | Set to `true` to include inactive runtimes.     |
+
+**Example:**
+
+```bash
+# List active runtimes
+curl "https://api.gateways.app/api/runtimes" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Include inactive runtimes
+curl "https://api.gateways.app/api/runtimes?includeInactive=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example response:**
+
+```json
+{
+  "message": "Runtimes retrieved successfully",
+  "runtimes": [
+    {
+      "id": 1,
+      "name": "node",
+      "version": "20",
+      "displayName": "Node.js 20",
+      "isActive": true
+    },
+    {
+      "id": 2,
+      "name": "python",
+      "version": "3.12",
+      "displayName": "Python 3.12",
+      "isActive": true
+    }
+  ]
+}
+```
+
+---
+
+## Runtime servers (per runtime type)
+
+### List runtime servers
+
+- **`GET /api/runtimes/servers`**
+
+Returns HTTP/server options for a given runtime type (e.g. `node` → Express, Fastify, Nginx, Caddy). Used to choose which server stack to use with a runtime. Each server has OS-specific install/remove scripts (same structure as runtimes).
+
+**Query parameters:**
+
+| Parameter        | Type   | Required | Description                                      |
+|------------------|--------|----------|--------------------------------------------------|
+| `runtimeName`    | string | Yes      | Runtime type: `node`, `python`, `go`, `java`, `bun`, `deno`, `dotnet`, `elixir`, `perl`, `php`, `ruby`, `rust`. |
+| `includeInactive` | string | No       | Set to `true` to include inactive servers.      |
+
+**Example:**
+
+```bash
+# List servers for Node.js
+curl "https://api.gateways.app/api/runtimes/servers?runtimeName=node" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# List servers for Python
+curl "https://api.gateways.app/api/runtimes/servers?runtimeName=python" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example response:**
+
+```json
+{
+  "message": "Runtime servers retrieved successfully",
+  "runtimeName": "node",
+  "servers": [
+    { "id": 1, "serverKey": "node-http", "displayName": "Node HTTP server", "sortOrder": 0, "isActive": true },
+    { "id": 2, "serverKey": "express", "displayName": "Express", "sortOrder": 5, "isActive": true },
+    { "id": 3, "serverKey": "fastify", "displayName": "Fastify", "sortOrder": 10, "isActive": true },
+    { "id": 4, "serverKey": "nginx", "displayName": "Nginx", "sortOrder": 15, "isActive": true },
+    { "id": 5, "serverKey": "caddy", "displayName": "Caddy", "sortOrder": 20, "isActive": true }
+  ]
+}
+```
+
+**Common runtime → server mappings:**
+
+| Runtime | Servers (examples) |
+|---------|---------------------|
+| bun     | Bun HTTP server, Nginx, Caddy |
+| deno    | Deno HTTP server, Nginx, Caddy |
+| dotnet  | Kestrel, IIS, Nginx, Apache |
+| elixir  | Cowboy, Bandit, Nginx |
+| go      | Go HTTP server, Caddy, Nginx |
+| java    | Tomcat, Jetty, Undertow, Netty, Nginx |
+| node    | Node HTTP server, Express, Fastify, Nginx, Caddy |
+| perl    | Apache + mod_perl, Starman, Nginx |
+| php     | PHP-FPM + Nginx, Apache |
+| python  | Gunicorn, uWSGI, Uvicorn, Nginx |
+| ruby    | Puma, Unicorn, Passenger, Nginx |
+| rust    | Actix, Axum, Hyper, Nginx, Caddy |
+
+---
+
+## Runtime resources (project/environment-scoped)
+
+Runtime resources are canvas cards that reference a runtime (name + version). They can be connected to instances; on connect, the backend installs the runtime on the instance via SSH using OS-specific install scripts. See [Resource Connections](/api/07-resource-connections) for runtime → instance connection behavior.
+
+### Create runtime resource
+
+- **`POST /api/:projectSlug/:environmentSlug/runtimes`**
+
+Creates a runtime resource (canvas card) for the given project and environment.
+
+**Path parameters:**
+
+| Parameter        | Type   | Description        |
+|------------------|--------|--------------------|
+| `projectSlug`    | string | Project slug.      |
+| `environmentSlug` | string | Environment slug. |
+
+**Body:**
+
+| Field       | Type   | Required | Description |
+|------------|--------|----------|-------------|
+| `name`     | string | Yes      | Display name for the runtime resource. |
+| `runtimeId`| number | Yes      | ID from the runtimes table (from `GET /api/runtimes`). |
+| `positionX`| number | No       | Canvas X position. |
+| `positionY`| number | No       | Canvas Y position. |
+
+**Example:**
+
+```bash
+curl -X POST "https://api.gateways.app/api/my-project/master/runtimes" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Node 20", "runtimeId": 1, "positionX": 100, "positionY": 200}'
+```
+
+**Example response (201 Created):**
+
+```json
+{
+  "message": "Runtime resource created successfully",
+  "data": {
+    "id": 42,
+    "name": "Node 20",
+    "resourceType": "runtime",
+    "resourceId": "runtime-1-1234567890123",
+    "status": "active",
+    "position": { "x": 100, "y": 200 },
+    "metadata": {
+      "runtimeId": 1,
+      "runtimeName": "node",
+      "runtimeVersion": "20",
+      "runtimeDisplayName": "Node.js 20"
+    }
+  }
+}
+```
+
+### Get runtime resource
+
+- **`GET /api/:projectSlug/:environmentSlug/runtimes/:id`**
+
+Returns a single runtime resource by its database ID.
+
+**Path parameters:**
+
+| Parameter        | Type   | Description           |
+|------------------|--------|-----------------------|
+| `projectSlug`    | string | Project slug.         |
+| `environmentSlug`| string | Environment slug.    |
+| `id`             | number | Runtime resource ID.  |
+
+**Example:**
+
+```bash
+curl "https://api.gateways.app/api/my-project/master/runtimes/42" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example response:**
+
+```json
+{
+  "message": "Runtime resource retrieved successfully",
+  "data": {
+    "id": 42,
+    "name": "Node 20",
+    "resourceType": "runtime",
+    "resourceId": "runtime-1-1234567890123",
+    "status": "active",
+    "position": { "x": 100, "y": 200 },
+    "metadata": {
+      "runtimeId": 1,
+      "runtimeName": "node",
+      "runtimeVersion": "20",
+      "runtimeDisplayName": "Node.js 20"
+    }
+  }
+}
+```
+
+### Delete runtime resource
+
+- **`DELETE /api/:projectSlug/:environmentSlug/runtimes/:id`**
+
+Deletes the runtime resource (soft delete). If the runtime was connected to instances, disconnect those connections first; disconnecting a runtime → instance connection runs the runtime’s remove script on the instance.
+
+**Path parameters:** Same as Get runtime resource.
+
+**Example:**
+
+```bash
+curl -X DELETE "https://api.gateways.app/api/my-project/master/runtimes/42" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example response:**
+
+```json
+{
+  "message": "Runtime resource deleted successfully"
+}
+```
+
+---
+
+## Relationship to other APIs
+
+- **Unified resources:** Runtime resources appear in `GET /api/:projectSlug/:environmentSlug/resources` with `resourceType` (or `type`) `runtime`. Positions can be updated via [Resource Positions](/api/10-resource-positions).
+- **Resource connections:** Runtime → instance connections are allowed (see [Resource Connections](/api/07-resource-connections) and `allowed_connections` table). On connect, the backend installs the runtime on the instance via SSH; on disconnect, it runs the runtime’s remove script.
+- **Seeding:** Runtimes are seeded with `npm run seed:runtimes`; runtime servers with `npm run seed:runtime-servers` (see backend `scripts/`).

@@ -1,0 +1,20 @@
+---
+title: Runtime
+description: Language runtime cards on the canvas—catalog, configuration panel, and connection to servers.
+---
+
+| | |
+| --- | --- |
+| **Purpose** | A **runtime resource** records a **language runtime** (for example Node.js 20, Python 3.12) that you can **connect** to **servers** or **scalable servers** so the platform installs that runtime on the machine over SSH. |
+| **Create menu** | Single entry: **Runtime** — “Add a runtime environment (Node, Python, Go, etc.).” There is **no submenu** at Create time (unlike Application or Database). |
+| **API subtype** | `runtime`. |
+
+After you choose **Runtime** from Create, the **configuration panel** opens. That panel is where the UI behaves like a **runtime submenu**: you pick a **language family**, a **version** for that family, and (for some families) an **application server** stack. See:
+
+- **[Families and versions](/gateways/resources/runtime/families-and-versions)** — Horizontal family selector, version dropdown, data from `GET /api/runtimes`.
+- **[Application servers](/gateways/resources/runtime/application-servers)** — Optional server stack (Uvicorn, Gunicorn, Kestrel, etc.) when the family supports it.
+- **[Canvas and connections](/gateways/resources/runtime/canvas-and-connections)** — Linking runtimes to instances, install behavior, APIs.
+
+**Typical use:** Define “we standardize on Node 20” or “Python 3.11 + Uvicorn” as a **card**, then **connect** that card to one or more **server** / **scalable server** resources so workloads on those hosts use the same runtime.
+
+[← Resource types hub](/gateways/resources)

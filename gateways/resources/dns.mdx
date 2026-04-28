@@ -1,0 +1,37 @@
+---
+title: DNS
+description: Hosted DNS zones—API subtype dns; Native and Cloudflare variants in the panel.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | **Hosted DNS** for a domain: create zones on the cloud provider or manage zones through **Cloudflare**. |
+| **API subtype** | `dns` for both variants. |
+| **Panel** | **`DNSConfigurationPanel`** — **name**, **domain name** (validated as a proper domain or subdomain), **provider** (`native` or `cloudflare`), optional **comment**, and **Cloudflare API token** when provider is Cloudflare. |
+
+## Create submenu
+
+| Variant | Purpose |
+| --- | --- |
+| **Native DNS** | Hosted zone on the **cloud DNS** (for example Route 53 on AWS). |
+| **Cloudflare** | DNS hosted on **Cloudflare**; the panel **requires** a **Cloudflare API token** when this provider is selected. |
+
+## Configuration (typical)
+
+- **Domain name** — Must match basic DNS naming rules (labels, TLD length, optional subdomains); invalid values block deploy until corrected.
+- **Provider** — Switching between native and Cloudflare changes required fields and backend behavior.
+- **Records** — The console may surface **DNS record** rows or flows (`dns-record` in UI labeling) as part of managing the zone.
+
+## Canvas and connections
+
+- Pair with [subdomain](/gateways/resources/utilities#subdomain) utilities and your application or infrastructure endpoints so hostnames resolve to the right origin.
+
+## Operations
+
+- **Sync** refreshes zone and record state from the provider or Cloudflare API where implemented.
+
+**API:** [API documentation](/api/index) → **DNS**, **Resources**.
+
+[← Resource types hub](/gateways/resources)

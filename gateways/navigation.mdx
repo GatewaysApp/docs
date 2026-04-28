@@ -1,0 +1,69 @@
+---
+title: Navigation
+description: Header layout, workspace and project selection, primary routes, and user menu behavior in the Gateways console.
+---
+
+## Application header
+
+### Brand and home
+
+The application logo links to `/` and returns the user to the dashboard. On account-settings routes, the logo behaves the same unless overridden by deployment-specific routing.
+
+### Workspace selector
+
+The workspace control displays the active workspace (name and image when available). Functions include:
+
+- Switching workspace: reloads the project list for the selected workspace and clears the prior project and environment selection.
+- Creating a workspace: opens the workspace creation flow or navigates to workspace administration, depending on implementation.
+- Empty state: when no workspace exists, the interface presents workspace creation entry points.
+
+The last selected workspace identifier is persisted in browser storage.
+
+### Project and environment
+
+These controls are hidden on global `/account-settings` routes.
+
+| Control | Behavior |
+| --- | --- |
+| Project | Lists projects for the active workspace. Selection loads environments for that project. **New project** opens the creation flow when the user’s role permits it. |
+| Environment | Becomes active after a project is selected. Lists environments for that project. **New environment** creates an additional environment when permitted. |
+
+Until both project and environment are selected, certain header links may be disabled or resolve to `/`.
+
+### Primary navigation
+
+Available when viewing the project dashboard (not on standalone account-settings layout):
+
+| Label | Route pattern | Purpose |
+| --- | --- | --- |
+| Dashboard | `/{project}/{environment}` | Architecture canvas. |
+| Activity | `/{project}/{environment}/activity` | Environment activity log. Disabled when no projects exist or the role disallows activity access. |
+| Settings | `/{project}/{environment}/settings` | Project and environment settings. Disabled when no projects exist or the role disallows settings management. |
+
+On narrow viewports, primary navigation and project/environment selectors may be grouped under a collapsible menu control.
+
+### Workspace invitations
+
+Pending invitations are surfaced through a notification control (badge count when non-zero). Each entry shows workspace metadata and assigned role. Actions are **accept** and **decline**.
+
+### Project creation entry points
+
+| Entry | Behavior |
+| --- | --- |
+| Project dropdown — New project | Opens a modal when at least one project already exists and creation is allowed. |
+| `/projects/new` | Full-page project creation. Requires a workspace selection in browser storage. After creation, navigation typically proceeds to the default environment (for example `master` or the first environment returned by the API). |
+
+If the workspace contains zero projects, the creation flow may require completion before dismissal.
+
+### User menu
+
+Opened from the profile control (avatar or placeholder).
+
+| Action | Result |
+| --- | --- |
+| Dashboard | Navigates to the architecture view. |
+| Account settings | Navigates to `/account-settings`. |
+| Theme | Sets display theme to system, light, or dark (authenticated app only; authentication pages remain dark). |
+| Log out | Terminates the session and redirects to `/login`. |
+
+Email-password accounts with unverified addresses may display a verification status indicator. Verification email resend, when supported, is initiated from account settings.

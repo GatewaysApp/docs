@@ -1,0 +1,38 @@
+---
+title: Resource connections
+description: Relationships between resources on the canvas—API subtype resource_connection.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | A **resource connection** represents an **allowed relationship** between two resources: traffic flow, dependency, DNS linkage, runtime installation, database access, etc. |
+| **How it appears** | Not always a separate top-level Create entry—often created when you **draw or link two cards** on the canvas. |
+| **API / UI types** | `resource_connection` / **Connection** on cards. |
+
+## Behavior
+
+- **Validation** — The platform applies **resource connection rules** (which types may connect to which). Invalid pairs are rejected or surfaced as errors in the UI or API.
+- **Scope** — Connections are **scoped to the project and environment** (and workspace, if your deployment uses it) like other resources.
+
+## Typical patterns
+
+| From | To | Example intent |
+| --- | --- | --- |
+| HTTP front end (when available) | Scalable server | HTTP routing to application tier |
+| Firewall | Server | Restrict inbound ports |
+| Application | Database | App uses DB connection string |
+| Edge cache (when available) | Storage bucket | Cache static objects at the edge |
+| Runtime | Server | Install/manage runtime on host |
+
+Exact allowed pairs depend on your deployment’s rules engine.
+
+## Operations
+
+- **Delete** removes the connection edge without necessarily deleting either endpoint resource.
+- **List / sync** follow the unified resources and connections APIs.
+
+**API:** [API documentation](/api/index) → **Resource connections**, **Unified resources**.
+
+[← Resource types hub](/gateways/resources)

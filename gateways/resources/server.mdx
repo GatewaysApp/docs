@@ -1,0 +1,39 @@
+---
+title: Server
+description: Single-instance compute (VM)—Create, configuration panel, and API subtype instance.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | One **virtual machine** (or cloud **instance**) in the linked account—general-purpose compute for apps, bastions, workers, or anything that maps to a single VM. |
+| **Create menu** | “Deploy a web service.” |
+| **API subtype** | `instance` (cards may show **Server** or **instance**). |
+| **Panel** | **`ConfigurationPanel`** — same family of controls as other compute: **region**, **OS / image (AMI or provider image)**, **instance type**, **boot volume** (type and size), and related options. |
+
+## Configuration (typical)
+
+After you choose **Server**, the panel loads provider data for the project’s cloud:
+
+- **Region** — Where the instance runs; changing region reloads images and instance types for that scope.
+- **CPU architecture** — For example **x86_64** vs **arm64** where the cloud offers a choice; filters compatible images and sizes.
+- **Operating system / image** — Horizontal selector of OS families (for example Amazon Linux, Ubuntu, Debian) with a **version/build** choice per family; images come from the platform’s image APIs for the project.
+- **Instance type** — Family and size (vCPU, memory); pricing hints may appear when the API provides them.
+- **Storage** — Boot volume **type** (for example `gp3` on AWS) and **size** (GiB), with guardrails per OS image where applicable.
+
+Exact fields depend on **AWS vs GCP vs Azure** (the panel branches on `cloudProvider`).
+
+## Canvas and connections
+
+- Connect **servers** to **firewalls**, **runtimes** (install runtime on this host), **applications**, or other allowed pairs per your **resource connection** rules.
+- **Terminal** resources may attach to eligible servers for shell access.
+
+## Operations
+
+- **Sync** from cloud (where implemented) refreshes status and metadata from the provider.
+- **Delete** tears down the instance and related cloud objects per the unified resources API.
+
+**API:** See [API documentation](/api/index) → **Servers & instances**, **Unified resources**, **Resource connections**.
+
+[← Resource types hub](/gateways/resources)

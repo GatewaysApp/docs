@@ -1,0 +1,494 @@
+---
+title: "List all files in root (bucketExplorerId = 1)"
+description: "HTTP API: List all files in root (bucketExplorerId = 1)"
+---
+
+### Bucket Files Management Endpoints
+
+These endpoints allow you to list, upload, download, and manage files in S3 storage buckets. All operations use a bucket explorer resource ID, which must be connected to a storage bucket via resource connections.
+
+**Important:** The `:bucketExplorerId` parameter in the URL path is the **bucket explorer resource ID**, not the storage bucket ID. The system will automatically look up the connected storage bucket via resource connections.
+
+#### List Files in Bucket
+- `GET /api/:projectSlug/:environmentSlug/storage-buckets/:bucketExplorerId/files` - List files and folders in a storage bucket
+
+**Query Parameters:**
+- `prefix` (optional): Filter files by prefix/folder path (e.g., `"folder/subfolder/"`)
+- `maxKeys` (optional): Maximum number of files to return (default: 1000)
+- `continuationToken` (optional): Token for pagination when previous response was truncated
+
+**Note:** The `:bucketExplorerId` parameter is the bucket explorer resource ID. Make sure the bucket explorer is connected to a storage bucket via resource connections before using this endpoint.
+
+**Example:**
+```bash
+# List all files in root (bucketExplorerId = 1)
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# List files in a specific folder
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files?prefix=uploads/" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# List files with pagination
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files?maxKeys=100&continuationToken=abc123" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Files listed successfully",
+  "bucketExplorerId": 1,
+  "bucketId": 2,
+  "bucketName": "deplo-codepanel-master-app-files-a1b2c3d4",
+  "prefix": "",
+  "files": [
+    {
+      "key": "document.pdf",
+      "name": "document.pdf",
+      "lastModified": "2024-01-15T10:30:00.000Z",
+      "size": 1024000,
+      "etag": "\"abc123def456\"",
+      "storageClass": "STANDARD"
+    },
+    {
+      "key": "image.jpg",
+      "name": "image.jpg",
+      "lastModified": "2024-01-15T11:00:00.000Z",
+      "size": 512000,
+      "etag": "\"xyz789uvw012\"",
+      "storageClass": "STANDARD"
+    }
+  ],
+  "folders": [
+    {
+      "prefix": "uploads/",
+      "name": "uploads"
+    },
+    {
+      "prefix": "backups/",
+      "name": "backups"
+    }
+  ],
+  "isTruncated": false,
+  "continuationToken": null
+}
+```
+
+#### Get File Metadata
+- `GET /api/:projectSlug/:environmentSlug/storage-buckets/:bucketExplorerId/files/metadata` - Get metadata for a specific file
+
+**Note:** The `:bucketExplorerId` parameter is the bucket explorer resource ID.
+
+**Query Parameters:**
+- `key` (required): Object key (file path) - e.g., `"folder/file.txt"`
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files/metadata?key=document.pdf" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Note:** The `1` in the URL is the bucket explorer resource ID, not the storage bucket ID.
+
+**Example Response:**
+```json
+{
+  "message": "File metadata retrieved successfully",
+  "metadata": {
+    "key": "document.pdf",
+    "name": "document.pdf",
+    "lastModified": "2024-01-15T10:30:00.000Z",
+    "size": 1024000,
+    "etag": "\"abc123def456\"",
+    "contentType": "application/pdf",
+    "storageClass": "STANDARD"
+  }
+}
+```
+
+#### Download File
+- `GET /api/:projectSlug/:environmentSlug/storage-buckets/:bucketExplorerId/files/download` - Download a file from the storage bucket
+
+**Note:** The `:bucketExplorerId` parameter is the bucket explorer resource ID.
+
+**Query Parameters:**
+- `key` (required): Object key (file path) - e.g., `"folder/file.txt"`
+
+**Example:**
+```bash
+# Download a file (redirects to download or opens in browser depending on content type)
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files/download?key=document.pdf" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --output document.pdf
+
+# Or use wget
+wget --header="Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files/download?key=document.pdf" \
+  -O document.pdf
+```
+
+**Response:**
+- Returns the file content as a binary stream
+- Content-Type header is set based on file type
+- Content-Disposition header suggests filename for download
+- Content-Length header indicates file size
+
+#### Upload File
+- `POST /api/:projectSlug/:environmentSlug/storage-buckets/:bucketExplorerId/files/upload` - Upload a file to the storage bucket
+
+**Note:** The `:bucketExplorerId` parameter is the bucket explorer resource ID.
+
+**Request:**
+- Content-Type: `multipart/form-data`
+- Form fields:
+  - `file` (required): File to upload
+  - `key` (optional): Object key (file path). If not provided, uses the original filename
+  - `contentType` (optional): Content type. If not provided, auto-detected from file
+
+**Example using curl:**
+```bash
+# Upload a file (uses original filename as key)
+curl -X POST "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files/upload" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "file=@/path/to/document.pdf"
+
+# Upload a file with custom key/path
+curl -X POST "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files/upload" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "file=@/path/to/document.pdf" \
+  -F "key=uploads/documents/document.pdf" \
+  -F "contentType=application/pdf"
+```
+
+**Example using JavaScript (FormData):**
+```javascript
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+formData.append('key', 'uploads/my-file.pdf');
+formData.append('contentType', 'application/pdf');
+
+fetch('https://api.gateways.app/api/codepanel/master/storage-buckets/1/files/upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_JWT_TOKEN'
+  },
+  body: formData
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+
+**Example Response:**
+```json
+{
+  "message": "File uploaded successfully",
+  "data": {
+    "key": "uploads/documents/document.pdf",
+    "bucketName": "deplo-codepanel-master-app-files-a1b2c3d4",
+    "etag": "\"abc123def456\"",
+    "size": 1024000,
+    "contentType": "application/pdf"
+  }
+}
+```
+
+**File Size Limits:**
+- Maximum file size: 5GB
+- For larger files, consider using AWS S3 direct upload methods
+
+#### Rename/Move File
+- `PATCH /api/:projectSlug/:environmentSlug/storage-buckets/:bucketExplorerId/files/rename` - Rename or move a file in the storage bucket
+
+**Note:** The `:bucketExplorerId` parameter is the bucket explorer resource ID. In S3, renaming is done by copying the object to a new key and deleting the old one.
+
+**Request Body:**
+```json
+{
+  "oldKey": "old-filename.pdf",  // Current file path/key (required)
+  "newKey": "new-filename.pdf"   // New file path/key (required)
+}
+```
+
+**Example:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files/rename" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "oldKey": "document.pdf",
+    "newKey": "renamed-document.pdf"
+  }'
+```
+
+**Example (move to different folder):**
+```bash
+curl -X PATCH "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files/rename" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "oldKey": "document.pdf",
+    "newKey": "archived/document.pdf"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "File renamed successfully",
+  "data": {
+    "oldKey": "document.pdf",
+    "newKey": "renamed-document.pdf",
+    "etag": "\"new-etag-value\""
+  }
+}
+```
+
+**Error Response (file not found):**
+```json
+{
+  "error": "Failed to rename file",
+  "message": "Source file \"document.pdf\" does not exist"
+}
+```
+
+**Error Response (destination file exists):**
+```json
+{
+  "error": "File already exists",
+  "message": "A file with key \"renamed-document.pdf\" already exists. Cannot rename to an existing file."
+}
+```
+
+**Error Response (same key):**
+```json
+{
+  "error": "Invalid request",
+  "message": "oldKey and newKey cannot be the same"
+}
+```
+
+**Note:** 
+- This operation copies the file to the new location and then deletes the old file
+- If the destination file already exists, the operation will fail to prevent overwriting
+- You can use this endpoint to move files between folders by changing the path in the key
+
+#### Delete File
+- `DELETE /api/:projectSlug/:environmentSlug/storage-buckets/:bucketExplorerId/files` - Delete a single file from the storage bucket
+
+**Note:** The `:bucketExplorerId` parameter is the bucket explorer resource ID.
+
+**Query Parameters:**
+- `key` (required): Object key (file path) - e.g., `"folder/file.txt"`
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files?key=document.pdf" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "File deleted successfully",
+  "key": "document.pdf"
+}
+```
+
+**Error Response (file not found):**
+```json
+{
+  "error": "Failed to delete file",
+  "message": "Failed to delete S3 object: The specified key does not exist."
+}
+```
+
+#### Delete Multiple Files (Bulk Delete)
+- `DELETE /api/:projectSlug/:environmentSlug/storage-buckets/:bucketExplorerId/files/bulk` - Delete multiple files from the storage bucket
+
+**Note:** The `:bucketExplorerId` parameter is the bucket explorer resource ID.
+
+**Request Body:**
+```json
+{
+  "keys": [
+    "file1.pdf",
+    "folder/file2.jpg",
+    "uploads/file3.txt"
+  ]
+}
+```
+
+**Limits:**
+- Maximum 1000 files per request (AWS S3 limit)
+- All keys must be non-empty strings
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files/bulk" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keys": [
+      "document.pdf",
+      "image.jpg",
+      "folder/another-file.txt"
+    ]
+  }'
+```
+
+**Example Response (all successful):**
+```json
+{
+  "message": "Successfully deleted 3 file(s)",
+  "data": {
+    "deleted": [
+      "document.pdf",
+      "image.jpg",
+      "folder/another-file.txt"
+    ],
+    "failed": [],
+    "totalRequested": 3,
+    "totalDeleted": 3,
+    "totalFailed": 0
+  }
+}
+```
+
+**Example Response (partial success):**
+```json
+{
+  "message": "Deleted 2 file(s), 1 file(s) failed",
+  "data": {
+    "deleted": [
+      "document.pdf",
+      "image.jpg"
+    ],
+    "failed": [
+      {
+        "key": "folder/nonexistent-file.txt",
+        "error": "NoSuchKey"
+      }
+    ],
+    "totalRequested": 3,
+    "totalDeleted": 2,
+    "totalFailed": 1
+  }
+}
+```
+
+**Error Responses:**
+
+**Empty keys array:**
+```json
+{
+  "error": "Missing required parameter",
+  "message": "keys must be a non-empty array of object keys (file paths)"
+}
+```
+
+**Too many keys:**
+```json
+{
+  "error": "Too many keys",
+  "message": "Cannot delete more than 1000 files in a single request"
+}
+```
+
+**Invalid keys:**
+```json
+{
+  "error": "Invalid keys",
+  "message": "All keys must be non-empty strings"
+}
+```
+
+#### Folder Structure
+
+S3 uses a flat key-value structure, but you can simulate folders using forward slashes (`/`) in object keys. For example:
+
+- `document.pdf` - File in root
+- `uploads/document.pdf` - File in "uploads" folder
+- `uploads/2024/document.pdf` - File in nested folder
+
+When listing files:
+- Use the `prefix` parameter to filter by folder
+- The `folders` array in the response shows all prefixes (folders) at the current level
+- The `files` array shows actual files at the current level
+
+**Example: List files in a folder**
+```bash
+# List files in "uploads" folder
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files?prefix=uploads/" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Pagination
+
+When listing files in large buckets, responses may be truncated. Use pagination to retrieve all files:
+
+```bash
+# First request
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files?maxKeys=100" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Response includes continuationToken if isTruncated is true
+# Use continuationToken for next page
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets/1/files?maxKeys=100&continuationToken=abc123" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Error Responses
+
+**File Not Found (404):**
+```json
+{
+  "error": "Failed to get file metadata",
+  "message": "Failed to get S3 object metadata: The specified key does not exist."
+}
+```
+
+**Access Denied (403):**
+```json
+{
+  "error": "Forbidden",
+  "message": "You do not have access to this project"
+}
+```
+
+**Bucket Not Found (404):**
+```json
+{
+  "error": "Storage bucket not found",
+  "message": "The specified storage bucket does not exist or you do not have access"
+}
+```
+
+**File Too Large (400):**
+```json
+{
+  "error": "File too large",
+  "message": "File size exceeds maximum allowed size of 5GB"
+}
+```
+
+#### Notes
+
+- All file operations require authentication
+- **The `:bucketExplorerId` parameter is the bucket explorer resource ID, not the storage bucket ID**
+- The bucket explorer must be connected to a storage bucket via resource connections before using these endpoints
+- Users can only access files in buckets they own
+- File uploads are limited to 5GB per file
+- File paths (keys) are case-sensitive
+- Deleting a file is permanent and cannot be undone (unless versioning is enabled)
+- The API automatically handles AWS credential management using AssumeRole
+- If a bucket explorer is not connected to a storage bucket, these endpoints will return an error
+
+**Error Response (bucket explorer not connected):**
+```json
+{
+  "error": "Bucket explorer is not connected to a storage bucket",
+  "message": "Bucket explorer is not connected to a storage bucket"
+}
+```
+

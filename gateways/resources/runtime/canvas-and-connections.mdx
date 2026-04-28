@@ -1,0 +1,33 @@
+---
+title: "Runtime: Canvas and connections"
+description: Connecting runtime resources to servers, SSH install behavior, and API references.
+---
+
+## On the canvas
+
+- A **runtime** is a normal **card**. You can **move** it like any other resource.
+- **Undo/redo** applies to card positions like other resources.
+
+## Connecting runtime → server
+
+- Draw a **connection** from the **runtime** card to a **server** (**instance**) or **scalable server** card when the platform allows that pair.
+- On **connect**, the backend typically **installs** the selected runtime on the target instance using **SSH** and **OS-specific install scripts** for the chosen version.
+- On **disconnect**, a **remove** script may run, depending on resource connection rules and state.
+
+Exact **allowed pairs** and lifecycle behavior are defined by your deployment’s **resource connections** rules. Invalid connections are rejected or surfaced as errors.
+
+## Metadata on the resource
+
+Runtime resources store identifiers such as **`runtimeId`**, **`runtimeName`**, **`runtimeVersion`**, **`runtimeDisplayName`**, and optionally **`applicationServer`**, in resource metadata for use by deploy and install flows.
+
+## APIs
+
+| Topic | Where to read |
+| --- | --- |
+| Runtime catalog | `GET /api/runtimes`, `GET /api/runtimes/servers` |
+| Create/update runtime **resource** | `POST/GET/PATCH/DELETE .../:projectSlug/:environmentSlug/runtimes` |
+| Connections | **Resource connections** API and docs |
+
+Start from **[API documentation](/api/index)** → **Runtimes** (`/api/28-runtimes`) and **Resource connections** (`/api/07-resource-connections`).
+
+[← Runtime overview](/gateways/resources/runtime) · [Resource types hub](/gateways/resources)

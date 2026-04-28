@@ -1,0 +1,224 @@
+---
+title: "With auto-generated slug (slug will be generated from name)"
+description: "HTTP API: With auto-generated slug (slug will be generated from name)"
+---
+
+### Server/Instance Management Endpoints (Project-Based)
+
+- `POST /api/projects/:projectSlug/servers` - Create server (EC2 or GCP Compute VM) in a project. Provider from project's cloud connection. GCP requires imageId (e.g. `projects/debian-cloud/global/images/...`), optional instanceType (default e2-micro). (requires authentication)
+- `GET /api/projects/:projectSlug/servers` - List all servers for a project (requires authentication)
+- `GET /api/projects/:projectSlug/servers/:instanceId` - Get server details (requires authentication)
+- `PUT /api/:projectSlug/:environmentSlug/resources/:resourceId/sync` - Sync/refresh instance data from cloud provider (use unified resources API)
+
+**Delete:** Server (instance) deletion is performed **only** via `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`. Use the instance’s database ID. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id).
+
+**Note:** All project server endpoints now use project slugs instead of IDs. The `instanceId` parameter remains the AWS instance ID.
+
+#### Project Management API Examples
+
+**Create Project:**
+```bash
+# With auto-generated slug (slug will be generated from name)
+curl -X POST https://api.gateways.app/api/projects \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Production Project",
+    "description": "Production environment"
+  }'
+
+# With custom slug
+curl -X POST https://api.gateways.app/api/projects \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Production Project",
+    "slug": "my-production-project",
+    "description": "Production environment"
+  }'
+```
+
+**Note:** 
+- `name` is required
+- `slug` is optional - if not provided, it will be auto-generated from the name
+- The slug must be globally unique (across all users). If the provided slug is already taken, a number will be appended to make it unique.
+
+**List Projects:**
+```bash
+curl https://api.gateways.app/api/projects \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Get Project Details:**
+```bash
+curl https://api.gateways.app/api/projects/my-production-project \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Set Default Project:**
+```bash
+curl -X PATCH https://api.gateways.app/api/projects/my-production-project/set-default \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Update Project (including setting as default and custom slug):**
+```bash
+curl -X PATCH https://api.gateways.app/api/projects/my-production-project \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Project Name",
+    "slug": "updated-project-slug",
+    "description": "Updated description",
+    "isDefault": true
+  }'
+```
+
+#### Cloud Connection API Examples
+
+**List Connections for Project:**
+```bash
+curl https://api.gateways.app/api/projects/my-production-project/cloud-connections \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Environment Management API Examples
+
+**Create Environment:**
+```bash
+curl -X POST https://api.gateways.app/api/projects/my-production-project/environments \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "staging",
+    "slug": "staging",
+    "description": "Staging environment"
+  }'
+```
+
+**List Environments:**
+```bash
+curl https://api.gateways.app/api/projects/my-production-project/environments \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Get Environment Details:**
+```bash
+curl https://api.gateways.app/api/projects/my-production-project/environments/staging \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Set Default Environment:**
+```bash
+curl -X PATCH https://api.gateways.app/api/projects/my-production-project/environments/staging/set-default \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Update Environment (including setting as default and custom slug):**
+```bash
+curl -X PATCH https://api.gateways.app/api/projects/my-production-project/environments/staging \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "production",
+    "slug": "production",
+    "description": "Production environment",
+    "isDefault": true
+  }'
+```
+
+#### Server Management API Examples
+
+**Create Server (in default master environment):**
+```bash
+curl -X POST https://api.gateways.app/api/projects/my-production-project/servers \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cloudProvider": "aws",
+    "region": "us-east-1",
+    "instanceType": "t3.micro",
+    "imageId": "ami-0c55b159cbfafe1f0"
+  }'
+```
+
+**Create Server (in specific environment by slug):**
+```bash
+curl -X POST https://api.gateways.app/api/projects/my-production-project/servers \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environmentSlug": "staging",
+    "cloudProvider": "aws",
+    "region": "us-east-1",
+    "instanceType": "t3.micro"
+  }'
+```
+
+**List Servers (all environments):**
+```bash
+curl https://api.gateways.app/api/projects/my-production-project/servers \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**List Servers (filtered by environment slug):**
+```bash
+curl "https://api.gateways.app/api/projects/my-production-project/servers?environmentSlug=staging" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Get Server Details:**
+```bash
+curl https://api.gateways.app/api/projects/my-production-project/servers/i-1234567890abcdef0 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Delete Server:** Use the unified resources API with the instance’s database ID:
+```bash
+curl -X DELETE "https://api.gateways.app/api/my-production-project/master/resources/2" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Sync/Refresh Server Data from Cloud Provider:**
+
+**Note:** Instance sync is now performed through the unified resources API. Use the unified sync endpoint instead of the type-specific endpoint.
+
+**Unified Sync Endpoint:** `PUT /api/:projectSlug/:environmentSlug/resources/:resourceId/sync`
+
+See [Resources API — Sync Resource from Cloud Provider](/api/05-resources#sync-resource-from-cloud-provider) for details.
+
+```bash
+# Sync instance data from cloud provider and update database
+# resourceId is the database ID (numeric)
+curl -X PUT https://api.gateways.app/api/my-production-project/master/resources/2/sync \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Instance data synced successfully from AWS",
+  "data": {
+    "id": 2,
+    "resourceId": "i-1234567890abcdef0",
+    "status": "running",
+    "publicIp": "54.123.45.67",
+    "privateIp": "10.0.1.45",
+    "instanceType": "t3.micro",
+    "region": "us-east-1",
+    "awsData": {
+      "state": "running",
+      "publicIp": "54.123.45.67",
+      "privateIp": "10.0.1.45",
+      "instanceType": "t3.micro",
+      "launchTime": "2024-01-15T10:30:00.000Z"
+    },
+    "syncedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+**Note:** The sync endpoint:
+- Fetches the latest instance details from the cloud provider (AWS, GCP, or Azure)
+- Updates the database with current state, IP addresses, and instance type
+- Handles terminated instances (updates state to 'terminated' if not found in the cloud provider)

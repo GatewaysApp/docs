@@ -1,0 +1,985 @@
+---
+title: "Projects and Environments"
+description: "HTTP API: Projects and Environments"
+---
+
+# Projects and Environments API
+
+## Overview
+
+The Projects and Environments API provides endpoints for managing projects and their associated environments. Projects are top-level containers for organizing your infrastructure resources, and environments (like `production`, `staging`, `development`) allow you to manage resources across different deployment stages.
+
+**Base Endpoint:** `/api/projects`
+
+All endpoints require authentication.
+
+**Workspace Integration:** Projects are organized within workspaces. Each project belongs to a workspace, and workspace membership determines access to projects. To list projects for a specific workspace, use `GET /api/workspaces/:workspaceSlug/projects` (see [Workspaces API](/api/24-workspaces)).
+
+**Plan Restrictions:** Project and environment creation is subject to your workspace's pricing plan limits. See the [Pricing Plans API](/api/23-pricing-plans) documentation for details. If you exceed your plan limits, you'll receive a `403 Forbidden` error.
+
+---
+
+## Projects
+
+Projects are user-owned containers that organize your infrastructure resources. Each project can have multiple environments and can be connected to a cloud provider account.
+
+### Important Notes
+
+- Project slugs are **globally unique** (across all users) and are **automatically generated from the project name**
+- **Slug cannot be provided in request body** - it is always auto-generated from the name field
+- Projects are associated with workspaces. All projects belong to a workspace, and workspace membership determines access
+- The first project created in a workspace is automatically set as the default project for that workspace
+- To preview the slug that will be generated, use the JavaScript function provided below
+- Project deletion is soft delete (project is marked as inactive)
+- **Note:** To list projects for a specific workspace, use `GET /api/workspaces/:workspaceSlug/projects`. See the [Workspaces API](/api/24-workspaces) documentation.
+
+---
+
+### Check Project Name Availability
+
+Check if a project name (slug) is available globally before creating a project.
+
+**Endpoint:** `GET /api/projects/check-name`
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `name` (required): The project name to check
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/projects/check-name?name=My%20Awesome%20Project" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Name availability checked successfully",
+  "data": {
+    "name": "My Awesome Project",
+    "slug": "my-awesome-project",
+    "available": true
+  }
+}
+```
+
+**Response Fields:**
+- `name`: The trimmed name that was checked
+- `slug`: The generated slug from the name
+- `available`: `true` if the slug is available (not taken), `false` if it's already in use
+
+**Error Responses:**
+- `400 Bad Request`: Missing or invalid `name` query parameter
+- `401 Unauthorized`: Missing or invalid authentication token
+- `500 Internal Server Error`: Failed to check name availability
+
+---
+
+### Create Project
+
+Create a new project in a workspace.
+
+**Endpoint:** `POST /api/workspaces/:workspaceSlug/projects`
+
+**Authentication:** Required
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace where the project will be created
+
+**Request Body:**
+```json
+{
+  "name": "My Project",           // Required (1-100 characters)
+  "description": "Project description"  // Optional (max 350 characters)
+}
+```
+
+**Note:** 
+- Projects are created within a workspace. The user must be a member of the specified workspace and have permission to create projects.
+- **Slug is automatically generated from name** - it cannot be provided in the request body
+- Name must be between 1 and 100 characters
+- Description must be at most 350 characters (optional)
+- Use the JavaScript function below to preview the slug that will be generated
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/workspaces/johns-workspace/projects" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Awesome Project",
+    "description": "This is my project description"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Project created successfully",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "workspaceId": 1,
+    "name": "My Awesome Project",
+    "slug": "my-awesome-project",
+    "description": "This is my project description",
+    "workspaceSlug": "johns-workspace",
+    "isDefault": true,
+    "isActive": true,
+    "connectedCloudId": null,
+    "connectedCloud": null,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields (e.g., `name`), invalid name length (must be 1-100 characters), or invalid description length (must be at most 350 characters)
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Plan limit exceeded (e.g., maximum number of projects reached) or user does not have access to the workspace. See [Pricing Plans API](/api/23-pricing-plans) for details.
+- `404 Not Found`: Workspace does not exist
+- `500 Internal Server Error`: Failed to create project
+
+---
+
+### Slug Generation
+
+Slugs are automatically generated from names using the following JavaScript function. You can use this function in your frontend to preview the slug that will be generated:
+
+```javascript
+/**
+ * Generate a slug from a name
+ * @param {string} name - The name to convert to a slug
+ * @returns {string} A URL-friendly slug
+ */
+function generateSlug(name) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'untitled';
+}
+```
+
+**Examples:**
+- `"My Awesome Project"` → `"my-awesome-project"`
+- `"Production Environment"` → `"production-environment"`
+- `"Dev_Test"` → `"dev-test"`
+- `"API-Server@2024"` → `"api-server2024"`
+- `"---Special---"` → `"special"`
+- `"   Spaces   "` → `"spaces"`
+
+**Name Validation:**
+- Name must be between 1 and 100 characters
+- Any characters are allowed in the name - the slug will be generated automatically
+
+---
+
+### List Projects
+
+Get all projects for the authenticated user across all workspaces they have access to.
+
+**Endpoint:** `GET /api/projects`
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `include_inactive` (optional): Include inactive projects. Set to `"true"` to include soft-deleted projects. Default: `false`
+
+**Note:** To list projects for a specific workspace only, use `GET /api/workspaces/:workspaceSlug/projects` (see [Workspaces API](/api/24-workspaces)).
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/projects" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Include inactive projects
+curl "https://api.gateways.app/api/projects?include_inactive=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Projects retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "userId": 1,
+      "workspaceId": 1,
+      "name": "My Awesome Project",
+      "slug": "my-awesome-project",
+      "description": "This is my project description",
+      "workspaceSlug": "johns-workspace",
+      "isDefault": true,
+      "isActive": true,
+      "connectedCloudId": 5,
+      "connectedCloud": {
+        "id": 5,
+        "cloudType": "AWS",
+        "accountId": "123456789012",
+        "accountName": "My AWS Account",
+        "roleArn": "arn:aws:iam::123456789012:role/GatewaysAppDeployRole"
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "userId": 1,
+      "workspaceId": 2,
+      "name": "Another Project",
+      "slug": "another-project",
+      "description": null,
+      "workspaceSlug": "team-workspace",
+      "isDefault": false,
+      "isActive": true,
+      "connectedCloudId": null,
+      "createdAt": "2024-01-16T08:15:00.000Z",
+      "updatedAt": "2024-01-16T08:15:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### Get Project Usage
+
+Get usage statistics for a project, including current usage and plan limits for environments and resources.
+
+**Endpoint:** `GET /api/projects/:projectSlug/usage`
+
+**Parameters:**
+- `projectSlug` (path) - The slug of the project
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Project usage retrieved successfully",
+  "project": {
+    "id": 1,
+    "slug": "my-awesome-project",
+    "name": "My Awesome Project"
+  },
+  "plan": {
+    "id": 1,
+    "slug": "free",
+    "name": "Free Plan"
+  },
+  "usage": {
+    "environments": {
+      "current": 3,
+      "limit": 5,
+      "percentage": 60,
+      "unlimited": false
+    },
+    "resources": {
+      "total": 12,
+      "limit": 20,
+      "percentage": 60,
+      "unlimited": false
+    }
+  }
+}
+```
+
+**Fields:**
+- `project` - Project details (id, slug, name)
+- `plan` - Current pricing plan for the workspace (id, slug, name)
+- `usage.environments` - Environment usage in this project (current count, limit per project, percentage used, unlimited flag)
+- `usage.resources.total` - Total resource count across all environments in this project (from unified `resources` table)
+- `usage.resources.limit` - Maximum resources allowed per project
+- `usage.resources.percentage` - Percentage of project resource limit used
+- `usage.resources.unlimited` - Whether resources per project are unlimited
+
+**Note:** Resource counts are calculated directly from the unified `resources` table.
+
+**Note:** 
+- If `limit` is `null`, the plan has unlimited resources for that category
+- If `unlimited` is `true`, there is no limit enforced
+- `percentage` is calculated as `(current / limit) * 100` and capped at 100
+
+**Example:**
+```bash
+curl -X GET "https://api.gateways.app/api/projects/my-awesome-project/usage" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+- `401 Unauthorized` - User ID not found
+- `400 Bad Request` - Invalid project slug
+- `404 Not Found` - Project does not exist
+- `403 Forbidden` - User does not have access to this workspace
+- `500 Internal Server Error` - Failed to retrieve project usage
+
+---
+
+### Get Project
+
+Get details of a specific project by slug.
+
+**Endpoint:** `GET /api/projects/:projectSlug`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/projects/my-awesome-project" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Project retrieved successfully",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "workspaceId": 1,
+    "name": "My Awesome Project",
+    "slug": "my-awesome-project",
+    "description": "This is my project description",
+    "workspaceSlug": "johns-workspace",
+    "isDefault": true,
+    "isActive": true,
+    "connectedCloudId": 5,
+    "connectedCloud": {
+      "id": 5,
+      "cloudType": "AWS",
+      "accountId": "123456789012",
+      "accountName": "My AWS Account",
+      "roleArn": "arn:aws:iam::123456789012:role/GatewaysAppDeployRole"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid project slug
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't own this project
+- `404 Not Found`: Project does not exist
+- `500 Internal Server Error`: Failed to retrieve project
+
+---
+
+### Update Project
+
+Update an existing project.
+
+**Endpoint:** `PATCH /api/projects/:projectSlug`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project to update
+
+**Request Body:** (all fields are optional)
+```json
+{
+  "name": "Updated Project Name",
+  "slug": "updated-project-slug",
+  "description": "Updated description"  // Optional (max 350 characters)
+}
+```
+
+**Note:** 
+- The `isDefault` and `isActive` fields cannot be updated through this endpoint. Use the `set-default` endpoint to change the default project, and these fields are managed automatically by the system.
+- Description must be at most 350 characters
+
+**Example Request:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/projects/my-awesome-project" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Project Name",
+    "description": "New description"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Project updated successfully",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "workspaceId": 1,
+    "name": "Updated Project Name",
+    "slug": "my-awesome-project",
+    "description": "New description",
+    "workspaceSlug": "johns-workspace",
+    "isDefault": true,
+    "isActive": true,
+    "connectedCloudId": 5,
+    "connectedCloud": {
+      "id": 5,
+      "cloudType": "AWS",
+      "accountId": "123456789012",
+      "accountName": "My AWS Account",
+      "roleArn": "arn:aws:iam::123456789012:role/GatewaysAppDeployRole"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T11:45:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid project slug or no fields provided to update
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't own this project
+- `404 Not Found`: Project does not exist
+- `500 Internal Server Error`: Failed to update project
+
+---
+
+### Set Default Project
+
+Set a project as the user's default project.
+
+**Endpoint:** `PATCH /api/projects/:projectSlug/set-default`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project to set as default
+
+**Example Request:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/projects/my-awesome-project/set-default" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Project set as default successfully",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "workspaceId": 1,
+    "name": "My Awesome Project",
+    "slug": "my-awesome-project",
+    "description": "This is my project description",
+    "workspaceSlug": "johns-workspace",
+    "isDefault": true,
+    "isActive": true,
+    "connectedCloudId": 5,
+    "connectedCloud": {
+      "id": 5,
+      "cloudType": "AWS",
+      "accountId": "123456789012",
+      "accountName": "My AWS Account",
+      "roleArn": "arn:aws:iam::123456789012:role/GatewaysAppDeployRole"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid project slug
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't own this project
+- `404 Not Found`: Project does not exist
+- `500 Internal Server Error`: Failed to set default project
+
+---
+
+### Delete Project
+
+Delete a project (soft delete - marks project as inactive).
+
+**Endpoint:** `DELETE /api/projects/:projectSlug`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project to delete
+
+**Example Request:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/projects/my-awesome-project" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Project deleted successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid project slug
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't own this project
+- `404 Not Found`: Project does not exist
+- `500 Internal Server Error`: Failed to delete project
+
+---
+
+## Environments
+
+Environments are deployment stages within a project (e.g., `production`, `staging`, `development`). They help organize resources by their deployment context.
+
+### Important Notes
+
+- Environment slugs are **unique within a project** and are **automatically generated from the environment name**
+- **Slug cannot be provided in request body** - it is always auto-generated from the name field
+- A default `master` environment is automatically created when you create a project
+- Only one environment per project can be marked as default
+- Environment deletion is soft delete (environment is marked as inactive)
+- To preview the slug that will be generated, use the JavaScript function in the "Slug Generation" section above
+
+---
+
+### Check Environment Name Availability
+
+Check if an environment name (slug) is available within a project before creating an environment.
+
+**Endpoint:** `GET /api/projects/:projectSlug/environments/check-name`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project
+
+**Query Parameters:**
+- `name` (required): The environment name to check
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/projects/my-awesome-project/environments/check-name?name=Production" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Name availability checked successfully",
+  "data": {
+    "name": "Production",
+    "slug": "production",
+    "available": true,
+    "projectId": 1,
+    "projectSlug": "my-awesome-project"
+  }
+}
+```
+
+**Response Fields:**
+- `name`: The trimmed name that was checked
+- `slug`: The generated slug from the name
+- `available`: `true` if the slug is available within the project (not taken), `false` if it's already in use
+- `projectId`: The ID of the project
+- `projectSlug`: The slug of the project
+
+**Error Responses:**
+- `400 Bad Request`: Missing or invalid `name` query parameter or invalid project slug
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't have access to this workspace
+- `404 Not Found`: Project does not exist
+- `500 Internal Server Error`: Failed to check name availability
+
+---
+
+### Create Environment
+
+Create a new environment in a project.
+
+**Endpoint:** `POST /api/projects/:projectSlug/environments`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project
+
+**Request Body:**
+```json
+{
+  "name": "Production",           // Required (1-100 characters)
+  "description": "Production environment",  // Optional (max 350 characters)
+  "isDefault": false              // Optional - default: false
+}
+```
+
+**Note:**
+- **Slug is automatically generated from name** - it cannot be provided in the request body
+- Name must be between 1 and 100 characters
+- Description must be at most 350 characters (optional)
+- Use the JavaScript function in the "Slug Generation" section above to preview the slug that will be generated
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/projects/my-awesome-project/environments" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production",
+    "description": "Production environment for live deployments",
+    "isDefault": false
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Environment created successfully",
+  "data": {
+    "id": 1,
+    "projectId": 1,
+    "name": "Production",
+    "slug": "production",
+    "description": "Production environment for live deployments",
+    "isDefault": false,
+    "isActive": true,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields (e.g., `name`), invalid name length (must be 1-100 characters), invalid description length (must be at most 350 characters), or invalid project slug
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't own this project, or plan limit exceeded (e.g., maximum environments per project reached). See [Pricing Plans API](/api/23-pricing-plans) for details.
+- `404 Not Found`: Project does not exist
+- `500 Internal Server Error`: Failed to create environment
+
+---
+
+### List Environments
+
+Get all environments for a project.
+
+**Endpoint:** `GET /api/projects/:projectSlug/environments`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project
+
+**Query Parameters:**
+- `include_inactive` (optional): Include inactive environments. Set to `"true"` to include soft-deleted environments. Default: `false`
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/projects/my-awesome-project/environments" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Include inactive environments
+curl "https://api.gateways.app/api/projects/my-awesome-project/environments?include_inactive=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Environments retrieved successfully",
+  "count": 3,
+  "data": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "name": "Master",
+      "slug": "master",
+      "description": null,
+      "isDefault": true,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "projectId": 1,
+      "name": "Production",
+      "slug": "production",
+      "description": "Production environment for live deployments",
+      "isDefault": false,
+      "isActive": true,
+      "createdAt": "2024-01-15T11:00:00.000Z",
+      "updatedAt": "2024-01-15T11:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "projectId": 1,
+      "name": "Staging",
+      "slug": "staging",
+      "description": "Staging environment for testing",
+      "isDefault": false,
+      "isActive": true,
+      "createdAt": "2024-01-15T11:15:00.000Z",
+      "updatedAt": "2024-01-15T11:15:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### Get Environment
+
+Get details of a specific environment by slug.
+
+**Endpoint:** `GET /api/projects/:projectSlug/environments/:environmentSlug`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project
+- `environmentSlug` (required): The slug of the environment
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/projects/my-awesome-project/environments/production" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Environment retrieved successfully",
+  "data": {
+    "id": 2,
+    "projectId": 1,
+    "name": "Production",
+    "slug": "production",
+    "description": "Production environment for live deployments",
+    "isDefault": false,
+    "isActive": true,
+    "createdAt": "2024-01-15T11:00:00.000Z",
+    "updatedAt": "2024-01-15T11:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid project or environment slug
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't own this project
+- `404 Not Found`: Project or environment does not exist
+- `500 Internal Server Error`: Failed to retrieve environment
+
+---
+
+### Update Environment
+
+Update an existing environment.
+
+**Endpoint:** `PATCH /api/projects/:projectSlug/environments/:environmentSlug`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project
+- `environmentSlug` (required): The slug of the environment to update
+
+**Request Body:** (all fields are optional)
+```json
+{
+  "name": "Updated Environment Name",
+  "slug": "updated-environment-slug",
+  "description": "Updated description"  // Optional (max 350 characters)
+}
+```
+
+**Note:** 
+- The `isDefault` and `isActive` fields cannot be updated through this endpoint. Use the `set-default` endpoint to change the default environment, and these fields are managed automatically by the system.
+- Description must be at most 350 characters
+
+**Example Request:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/projects/my-awesome-project/environments/production" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production Environment",
+    "description": "Updated description"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Environment updated successfully",
+  "data": {
+    "id": 2,
+    "projectId": 1,
+    "name": "Production Environment",
+    "slug": "production",
+    "description": "Updated description",
+    "isDefault": false,
+    "isActive": true,
+    "createdAt": "2024-01-15T11:00:00.000Z",
+    "updatedAt": "2024-01-15T12:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid slugs or no fields provided to update
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't own this project
+- `404 Not Found`: Project or environment does not exist
+- `500 Internal Server Error`: Failed to update environment
+
+---
+
+### Set Default Environment
+
+Set an environment as the project's default environment.
+
+**Endpoint:** `PATCH /api/projects/:projectSlug/environments/:environmentSlug/set-default`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project
+- `environmentSlug` (required): The slug of the environment to set as default
+
+**Example Request:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/projects/my-awesome-project/environments/production/set-default" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Environment set as default successfully",
+  "data": {
+    "id": 2,
+    "projectId": 1,
+    "name": "Production",
+    "slug": "production",
+    "description": "Production environment for live deployments",
+    "isDefault": true,
+    "isActive": true,
+    "createdAt": "2024-01-15T11:00:00.000Z",
+    "updatedAt": "2024-01-15T13:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid project or environment slug
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't own this project
+- `404 Not Found`: Project or environment does not exist
+- `500 Internal Server Error`: Failed to set default environment
+
+---
+
+### Delete Environment
+
+Delete an environment (soft delete - marks environment as inactive).
+
+**Endpoint:** `DELETE /api/projects/:projectSlug/environments/:environmentSlug`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `projectSlug` (required): The slug of the project
+- `environmentSlug` (required): The slug of the environment to delete
+
+**Example Request:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/projects/my-awesome-project/environments/staging" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Environment deleted successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid project or environment slug
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You don't own this project
+- `404 Not Found`: Project or environment does not exist
+- `500 Internal Server Error`: Failed to delete environment
+
+---
+
+## Response Fields
+
+### Project Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | number | Unique project ID |
+| `userId` | number | ID of the user who owns the project |
+| `name` | string | Project name |
+| `slug` | string | Unique project slug (globally unique) |
+| `description` | string \| null | Project description |
+| `isDefault` | boolean | Whether this is the user's default project |
+| `isActive` | boolean | Whether the project is active (false if soft-deleted) |
+| `connectedCloudId` | number \| null | ID of the connected cloud connection |
+| `createdAt` | string | Timestamp when the project was created (ISO 8601) |
+| `updatedAt` | string | Timestamp when the project was last updated (ISO 8601) |
+
+### Environment Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | number | Unique environment ID |
+| `projectId` | number | ID of the parent project |
+| `name` | string | Environment name |
+| `slug` | string | Unique environment slug (unique within project) |
+| `description` | string \| null | Environment description |
+| `isDefault` | boolean | Whether this is the project's default environment |
+| `isActive` | boolean | Whether the environment is active (false if soft-deleted) |
+| `createdAt` | string | Timestamp when the environment was created (ISO 8601) |
+| `updatedAt` | string | Timestamp when the environment was last updated (ISO 8601) |
+
+---
+
+## Slug Generation
+
+### Project Slugs
+- Slugs are automatically generated from the project name by:
+  1. Converting to lowercase
+  2. Replacing spaces with hyphens
+  3. Removing special characters (keeping only alphanumeric and hyphens)
+  4. Ensuring uniqueness (if slug exists, a number is appended)
+- Custom slugs can be provided when creating or updating projects
+- Project slugs must be globally unique across all users
+
+### Environment Slugs
+- Slugs are automatically generated from the environment name using the same rules as project slugs
+- Custom slugs can be provided when creating or updating environments
+- Environment slugs must be unique within a project
+
+---
+
+## Best Practices
+
+1. **Naming**: Use descriptive names for projects and environments (e.g., `production`, `staging`, `development`)
+2. **Slugs**: Use consistent slug naming conventions for better URL readability
+3. **Default Projects**: Set a default project for quicker access to commonly used resources
+4. **Default Environments**: Set a default environment per project for easier navigation
+5. **Organization**: Group related resources by project and use environments to separate deployment stages

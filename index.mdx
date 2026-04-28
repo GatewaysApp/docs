@@ -1,0 +1,73 @@
+---
+title: Platform
+description: Gateways is a cloud operations console for designing infrastructure visually, connecting accounts, and shipping with your team—from architecture to activity in one place.
+---
+
+Gateways is a web-based platform for **modeling, connecting, and operating cloud infrastructure**. You work on a visual **architecture canvas**, organize work in **workspaces** and **projects**, and isolate stacks with **environments**. Link a cloud provider when you are ready to provision real resources—then monitor what changed in **Activity** and tune behavior in **Settings**.
+
+Use the hosted console at **[console.gateways.app](https://console.gateways.app)**. Sign in at **[console.gateways.app/login](https://console.gateways.app/login)**. In the browser tab, the app may appear as *Gateways – Architecture Dashboard*.
+
+## Designing on the canvas
+
+Point Gateways at your cloud accounts and lay out infrastructure the way you think about it—not only as a list in a vendor console.
+
+**Visual architecture**
+
+- **Interactive canvas** — Resources appear as cards you move, zoom into, and connect.
+- **Relationships** — Draw **connections** between resources to express dependencies and traffic paths.
+- **Configuration** — Open a resource to set regions, sizing, runtimes, and type-specific options.
+
+**Cloud linkage**
+
+- Connect **AWS**, **Azure**, **GCP**, or other supported providers depending on your deployment.
+- **Project-scoped** linking keeps credentials and usage aligned with how your team organizes systems.
+
+## Workspace and delivery model
+
+Software delivery extends beyond a single deployment. Gateways separates **who** owns work, **what** system you are building, and **where** it runs.
+
+**Organization**
+
+- **Workspaces** — Team boundary: members, invitations, and billing context.
+- **Projects** — Deployable systems or products; each can link one cloud account for provisioning.
+- **Environments** — Non-production and production slices (for example `staging`, `production`); resources and connections are **per environment**.
+
+**Collaboration**
+
+- **Invitations** — Join workspaces from the header when you are invited.
+- **Roles** — What you can create, change, or delete depends on workspace and project permissions.
+
+## Observability and project controls
+
+**Activity** — Filterable audit-style events for the current environment (creates, updates, deletes, connections, and more).
+
+**Project settings** — General project metadata, **usage** where exposed, **cloud provider** link/unlink, **environments**, **members**, and **danger** actions (for example project deletion) when permitted.
+
+## Account and sessions
+
+**Authentication** — Email, OAuth, or policies your administrator configures; optional **2FA** where enabled.
+
+**Account settings** — Profile, **security**, **sessions**, **workspace** details, and **members** at the workspace level when you have access.
+
+## APIs and automation
+
+These guides focus on the **web console**. For HTTP APIs and automation:
+
+- **[Gateways CLI](/gateways/cli)** — Install `gateways`, link `.gateways.yaml`, login, `push`, deploy, and SSH.
+- **[API reference](/api-reference/introduction)** — Conventions (Bearer tokens, OpenAPI).
+- **[API documentation](/api/index)** — Full REST catalog (authentication, projects, resources, workspaces, payments, and more).
+
+## Guides
+
+| Guide | What you’ll find |
+| --- | --- |
+| [Platform](/) (this page) | Product overview and links to every guide. |
+| [Overview](/gateways/overview) | Scope levels, theming, and URL reference in one place. |
+| [Authentication and registration](/gateways/create-account) | Sign-up, sign-in, OAuth, 2FA, password recovery. |
+| [Gateways CLI](/gateways/cli) | Command-line install, project file, push, deploy, connect. |
+| [Navigation](/gateways/navigation) | Header, workspace and project selectors, primary nav, user menu. |
+| [Architecture canvas](/gateways/canvas) | Canvas tools, create flow, cloud connect, connections. |
+| [Resource types](/gateways/resources) | What you can add from **Create**. |
+| [Activity and project settings](/gateways/activity-and-project-settings) | Activity filters and settings sections. |
+| [Account and workspace](/gateways/account) | Account routes, workspace admin, invitations. |
+| [Troubleshooting](/gateways/troubleshooting) | Maintenance, sessions, connectivity, visibility. |

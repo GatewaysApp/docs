@@ -1,0 +1,289 @@
+---
+title: "API Documentation"
+description: "HTTP API: API Documentation"
+---
+
+# API Documentation
+
+Welcome to the Gateways API documentation. Most endpoints require authentication.
+
+**Start here:** **[Authentication & API access](/api/00-authentication-access)** — base URL, **session JWT** vs **API keys** (`sk_`, `X-API-Key` or `Authorization: Bearer sk_…`), **WebSocket / URL token** auth, and credential restrictions.
+
+For login, signup, 2FA, and profile endpoints, see **[Authentication & user management](/api/01-authentication)**.
+
+## Base URL
+
+```
+https://api.gateways.app
+```
+
+## Authentication
+
+**Session token:** After login or signup, send the JWT in the `Authorization` header:
+
+```bash
+Authorization: Bearer YOUR_SESSION_JWT
+```
+
+**API key (automation):** Create keys with **`GET` / `POST` / `DELETE` `/api/users/api-keys`** (requires a session JWT). Use the secret with **`X-API-Key: sk_…`** or **`Authorization: Bearer sk_…`**. Details: **[Authentication & API access](/api/00-authentication-access)**.
+
+**Note:** If two-factor authentication (2FA) is enabled for your account, the login process requires an additional verification step. After logging in with email and password, you'll receive a verification token that must be used with the `/api/auth/login/verify-2fa` endpoint to complete authentication.
+
+## API Endpoints Overview
+
+### Core APIs
+
+0. **[Authentication & API access](/api/00-authentication-access)** — Base URL, **session JWT** vs **API keys** (`sk_`), **`X-API-Key`**, WebSocket **URL token**, credential restrictions.
+
+1. **[Authentication & User Management](/api/01-authentication)**
+   - User signup, login (with 2FA support), logout
+   - Two-factor authentication (2FA) login verification
+   - Password reset (forgot/reset)
+   - User profile management (update name, email, profile image)
+   - Change password
+   - Two-factor authentication (2FA) setup and management
+   - Session management
+   - Account deletion
+
+2. **[Projects & Environments](/api/02-projects-environments)**
+   - Project management (create, list, update, delete)
+   - Environment management (create, list, update, delete)
+   - Default project/environment settings
+   - Workspace integration (projects belong to workspaces)
+
+3. **[Cloud Connections](/api/03-cloud-connections)**
+   - Connect AWS accounts
+   - List and manage cloud connections
+   - Complete connection setup
+
+### Resource Management
+
+4. **[Servers & Instances](/api/04-servers-instances)**
+   - Create EC2 instances
+   - List and manage servers
+   - Sync instance data from cloud provider (via unified resources API)
+   - Terminate instances
+
+5. **[Unified Resources](/api/05-resources)**
+   - List all resources (instances, databases, applications, etc.)
+   - Get resource details
+   - Resource summary statistics
+
+6. **[Applications](/api/06-applications)**
+   - Upload application files
+   - List applications
+   - Get application details
+   - Delete applications
+
+7. **[Storage Buckets](/api/09-storage-buckets)**
+   - Create S3 buckets
+   - List and manage buckets
+   - Delete buckets
+
+8. **[Bucket Files](/api/15-bucket-files)**
+   - List files in S3 buckets
+   - Upload files to buckets
+   - Download files from buckets
+   - Delete files from buckets
+   - Get file metadata
+
+9. **[Firewalls](/api/08-firewalls)**
+   - Create security groups
+   - Manage firewall rules
+   - Delete firewalls
+
+10. **[Utility Resources](/api/11-utility-resources)**
+    - Terminals (SSH/WebSocket to instances)
+    - Bucket explorers (S3/static website browsing)
+    - DB monitors (metadata/config for DB dashboards)
+
+11. **[Bucket Explorers](/api/14-bucket-explorers)**
+    - Detailed bucket explorer flows (creation, listing, linking)
+
+12. **[Static Websites](/api/16-static-websites)**
+    - Create S3 buckets with static website hosting
+    - Configure public access and CORS
+    - Get website URLs
+
+13. **[Databases](/api/18-databases)**
+    - Create RDS database instances (MySQL, PostgreSQL, MariaDB)
+    - Automatic DB subnet group creation
+    - Default security group integration
+    - List and manage databases
+    - Sync database status from cloud provider (via unified resources API)
+    - Get database metrics/pulse (CPU, connections, memory, I/O, network)
+
+14. **[Cache Servers](/api/19-cache-servers)**
+    - Create serverless ElastiCache instances (Valkey, Memcached, Redis OSS)
+    - Automatic security group and subnet management
+    - List and manage cache servers
+    - Sync cache server status from cloud provider (via unified resources API)
+    - Query available engine versions
+
+15. **[Functions (Serverless/Lambda)](/api/21-functions)**
+    - Create AWS Lambda functions
+    - Support for multiple runtimes (Node.js, Python, Java, .NET, Go, Ruby)
+    - x86_64 and ARM64 architecture support
+    - Upload and update function code
+    - Invoke functions with custom payloads
+    - List and manage functions
+    - Delete functions
+    - Multiple file support for function packages
+    - Automatic Function URL generation
+
+16. **[DNS Management](/api/25-dns)**
+    - Create DNS hosted zones (Route53)
+    - List and manage DNS zones
+    - Create, update, and delete DNS records
+    - Support for multiple record types (A, AAAA, CNAME, MX, TXT, etc.)
+    - Automatic name server assignment
+    - Multi-provider support (Route53 currently, Cloudflare coming soon)
+
+17. **[Subdomains](/api/26-subdomains)**
+    - Create and manage subdomain resources (blog, support, docs, etc.)
+    - Link subdomains to parent domains
+    - Update subdomain descriptions and positions
+    - Delete subdomains
+    - Integration with DNS and resource connections
+
+18. **[Scalable Servers](/api/27-scalable-servers)**
+    - Create Auto Scaling Groups (ASG)
+    - Manage scalable server capacity (min/max/desired)
+    - Sync scalable server data from cloud provider (via unified resources API)
+    - Delete scalable servers
+    - Integration with DNS and other resources per your deployment
+
+19. **[Activity Logs](/api/22-activities)**
+    - View user activity logs
+    - Filter by project, environment, resource type, and action
+    - Track resource creation, updates, deletions, and invocations
+    - Pagination support
+
+20. **[Pricing Plans](/api/23-pricing-plans)**
+    - List all pricing plans
+    - Get plan details by slug
+    - Plan restrictions and limits
+
+21. **[Workspaces](/api/24-workspaces)**
+    - Create and manage workspaces
+    - List user's workspaces
+    - Workspace member management (add, update role, remove)
+    - Workspace settings and billing
+    - Role-based access control (owner, admin, member)
+
+22. **[Payments](/api/25-payments)**
+    - Create and manage payment methods (Stripe)
+    - Upgrade workspace plans (with payment)
+    - Downgrade workspace plans (immediate)
+    - Stripe integration and frontend setup guide
+
+23. **[Resource Connections](/api/07-resource-connections)**
+    - Connect resources together
+    - Manage connections
+    - Get connection details
+
+24. **[Resource Positions](/api/10-resource-positions)**
+    - Update resource positions on canvas
+    - Position data in responses
+
+25. **[Runtimes & Runtime Servers](/api/28-runtimes)**
+    - List runtimes catalog (GET /api/runtimes)
+    - List runtime servers by type (GET /api/runtimes/servers?runtimeName=node)
+    - Create, get, and delete runtime resources (project/environment-scoped)
+    - Runtime → instance connections install/remove runtime on server via SSH
+
+### Infrastructure & Configuration
+
+26. **[Cloud Infrastructure](/api/12-cloud-infrastructure)**
+   - Get regions
+   - Get instance types and pricing
+   - Get images/AMIs
+   - Get volume types
+   - Get cache engines (Redis, Valkey, Memcached)
+   - Get cache engine versions
+   - Get Lambda runtimes (Node.js, Python, Java, .NET, Go, Ruby, Custom)
+   - Get database types (MySQL, PostgreSQL, etc.)
+   - Get database versions
+   - Get database instance types
+
+### Legacy
+
+27. **[Legacy Endpoints](/api/13-legacy)**
+    - Deprecated endpoints (use project-based endpoints instead)
+
+## Common Response Formats
+
+### Success Response
+
+```json
+{
+  "message": "Operation completed successfully",
+  "data": { ... }
+}
+```
+
+### Error Response
+
+```json
+{
+  "error": "Error Type",
+  "message": "Human-readable error message"
+}
+```
+
+## Status Codes
+
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request
+- `401` - Unauthorized
+- `403` - Forbidden
+- `404` - Not Found
+- `409` - Conflict
+- `500` - Internal Server Error
+
+## Rate Limiting
+
+Currently, there are no rate limits implemented. This may change in future versions.
+
+## Pagination
+
+Some endpoints support pagination with `page` and `limit` query parameters:
+
+```bash
+GET /api/endpoint?page=1&limit=50
+```
+
+Response includes pagination metadata:
+
+```json
+{
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 100,
+    "totalPages": 2,
+    "hasNextPage": true,
+    "hasPrevPage": false
+  },
+  "data": [ ... ]
+}
+```
+
+## Filtering
+
+Many list endpoints support filtering via query parameters:
+
+- `type` - Filter by resource type
+- `status` - Filter by status
+- `region` - Filter by region
+- `projectId` - Filter by project
+- `environmentId` - Filter by environment
+
+See individual endpoint documentation for available filters.
+
+## Support
+
+For issues, questions, or contributions, please refer to the main README.md file.
+
+

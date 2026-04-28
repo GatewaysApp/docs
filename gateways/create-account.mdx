@@ -1,0 +1,62 @@
+---
+title: Authentication and registration
+description: Account creation, sign-in, OAuth, two-factor authentication, and password recovery for the Gateways console.
+---
+
+Open Gateways at **[console.gateways.app](https://console.gateways.app)**. **Sign in:** [console.gateways.app/login](https://console.gateways.app/login). **Create an account:** [console.gateways.app/signup](https://console.gateways.app/signup).
+
+Organizations may deploy the console on a hostname other than `console.gateways.app`. When applicable, substitute the URL supplied by your administrator.
+
+<Note>
+  When self-service registration is disabled at the platform level, the registration tab is omitted. Provisioning then occurs through invitation or an internal process defined by the organization.
+</Note>
+
+## Registration
+
+1. Navigate to `/signup` or select the registration action from the sign-in view.
+2. Complete one of the following:
+   - **OAuth (Google or GitHub):** Shown only if the deployment enables the provider. The user is redirected to the identity provider and returned through the OAuth callback route.
+   - **Email:** Supply full name, email address, password, and password confirmation, then submit the registration form.
+
+### Email password policy
+
+| Requirement | Rule |
+| --- | --- |
+| Minimum length | 8 characters |
+| Confirmation | Must match the password field |
+
+On success, the session is established and the browser is redirected to `/` (dashboard).
+
+### Checkout and pricing parameters
+
+Registration URLs may include a `plan` query parameter (for example `?plan=<slug>`). The application persists this association for subsequent billing or checkout steps. Users arriving from marketing or billing links do not need to manually preserve the query string.
+
+## Sign-in
+
+1. Open `/login`.
+2. Authenticate with email and password, or with an enabled OAuth provider.
+
+### Two-factor authentication
+
+Accounts with two-factor authentication enabled require a second step after primary authentication succeeds: a six-digit time-based code from a registered authenticator application.
+
+## Password recovery
+
+### Code-based recovery
+
+1. From `/login`, initiate password recovery, or open `/forgot-password` directly.
+2. Submit the account email address. The platform sends a message containing a six-digit verification code.
+3. Enter the code and define a new password meeting the same length requirement as registration.
+4. After confirmation, sign in with the new credentials.
+
+### Link-based recovery
+
+Some deployments complete reset via a link delivered by email. That flow uses `/reset-password` as the completion route.
+
+## Platform maintenance
+
+During maintenance, authentication routes may render a maintenance view instead of standard forms. Retry after the announced window or contact the platform operator.
+
+## OAuth callback route
+
+OAuth flows return through `/auth/callback`. This route is invoked by the application after identity provider consent; it is not intended for manual navigation.

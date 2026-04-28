@@ -1,0 +1,415 @@
+---
+title: "Activity Logs"
+description: "HTTP API: Activity Logs"
+---
+
+# Activity Logs API
+
+## Overview
+
+The Activity Logs API provides endpoints to retrieve and view user activity logs. All user actions (resource creation, updates, deletions, invocations, etc.) are automatically logged with timestamps, IP addresses, and metadata.
+
+## Base Endpoint
+
+```
+/api/activities
+```
+
+All endpoints require authentication.
+
+---
+
+## Get User Activity Logs
+
+Retrieve activity logs for the authenticated user.
+
+**Endpoint:** `GET /api/activities`
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `limit` (optional): Number of activities to return (default: 100, max: 1000)
+- `offset` (optional): Number of activities to skip for pagination (default: 0)
+- `projectSlug` (optional): Filter activities by project slug. If provided, `environmentSlug` can also be specified to filter by both project and environment.
+- `environmentSlug` (optional): Filter activities by environment slug. **Requires `projectSlug` to be specified.**
+- `resourceType` (optional): Filter activities by resource type (e.g., `function`, `instance`, `database`, `terminal`)
+- `action` (optional): Filter activities by action type (e.g., `create`, `update`, `delete`, `invoke`)
+
+**Example Request:**
+```bash
+# Get all activities for the user
+curl "https://api.gateways.app/api/activities" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get activities with filters
+curl "https://api.gateways.app/api/activities?resourceType=function&action=create&limit=50" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get activities for a specific project
+curl "https://api.gateways.app/api/activities?projectSlug=my-project" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get activities for a specific project and environment
+curl "https://api.gateways.app/api/activities?projectSlug=my-project&environmentSlug=production" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get activities with pagination
+curl "https://api.gateways.app/api/activities?limit=20&offset=40" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Activities retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "userId": 3,
+      "projectId": 4,
+      "environmentId": 4,
+      "user": {
+        "id": 3,
+        "name": "John Doe",
+        "profileImage": "https://example.com/profile.jpg"
+      },
+      "project": {
+        "slug": "my-project",
+        "name": "My Project"
+      },
+      "environment": {
+        "slug": "production",
+        "name": "Production"
+      },
+      "resourceType": "function",
+      "resourceId": 5,
+      "action": "create",
+      "description": "Created function \"my-lambda-function\"",
+      "metadata": {
+        "runtime": "nodejs20.x",
+        "architecture": "x86_64",
+        "handler": "index.handler",
+        "region": "us-east-1",
+        "resourceId": "my-lambda-function",
+        "functionUrl": "https://abc123xyz.lambda-url.us-east-1.on.aws/"
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "userId": 3,
+      "projectId": 4,
+      "environmentId": 4,
+      "user": {
+        "id": 3,
+        "name": "John Doe",
+        "profileImage": "https://example.com/profile.jpg"
+      },
+      "project": {
+        "slug": "my-project",
+        "name": "My Project"
+      },
+      "environment": {
+        "slug": "production",
+        "name": "Production"
+      },
+      "resourceType": "function",
+      "resourceId": 5,
+      "action": "invoke",
+      "description": "Invoked function \"my-lambda-function\"",
+      "metadata": {
+        "statusCode": 200,
+        "hasError": false
+      },
+      "createdAt": "2024-01-15T10:35:00.000Z"
+    }
+  ],
+  "pagination": {
+    "total": 150,
+    "limit": 100,
+    "offset": 0,
+    "hasMore": true
+  }
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized`: Missing or invalid authentication token
+- `500 Internal Server Error`: Failed to retrieve activities
+
+---
+
+## Get Project/Environment Activity Logs
+
+Retrieve activity logs for a specific project and environment.
+
+**Endpoint:** `GET /api/activities/:projectSlug/:environmentSlug`
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `limit` (optional): Number of logs to return (default: 100, max: 1000)
+- `offset` (optional): Number of logs to skip for pagination (default: 0)
+- `resourceType` (optional): Filter logs by resource type
+- `action` (optional): Filter logs by action type
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/activities/codepanel/master" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# With filters
+curl "https://api.gateways.app/api/activities/codepanel/master?resourceType=function&action=create" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Activities retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "userId": 3,
+      "projectId": 4,
+      "environmentId": 4,
+      "user": {
+        "id": 3,
+        "name": "John Doe",
+        "profileImage": "https://example.com/profile.jpg"
+      },
+      "project": {
+        "slug": "my-project",
+        "name": "My Project"
+      },
+      "environment": {
+        "slug": "production",
+        "name": "Production"
+      },
+      "resourceType": "function",
+      "resourceId": 5,
+      "action": "create",
+      "description": "Created function \"my-lambda-function\"",
+      "metadata": {
+        "runtime": "nodejs20.x",
+        "architecture": "x86_64",
+        "handler": "index.handler",
+        "region": "us-east-1"
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z"
+    }
+  ],
+  "pagination": {
+    "total": 25,
+    "limit": 100,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized`: Missing or invalid authentication token
+- `404 Not Found`: Project or environment not found
+- `500 Internal Server Error`: Failed to retrieve activities
+
+---
+
+## Get Specific Activity Entry
+
+Retrieve details of a specific activity entry.
+
+**Endpoint:** `GET /api/activities/:id`
+
+**Authentication:** Required
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/activities/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Activity retrieved successfully",
+  "data": {
+    "id": 1,
+    "userId": 3,
+    "projectId": 4,
+    "environmentId": 4,
+    "user": {
+      "id": 3,
+      "name": "John Doe",
+      "profileImage": "https://example.com/profile.jpg"
+    },
+    "project": {
+      "slug": "my-project",
+      "name": "My Project"
+    },
+    "environment": {
+      "slug": "production",
+      "name": "Production"
+    },
+    "resourceType": "function",
+    "resourceId": 5,
+    "action": "create",
+    "description": "Created function \"my-lambda-function\"",
+    "metadata": {
+      "runtime": "nodejs20.x",
+      "architecture": "x86_64",
+      "handler": "index.handler",
+      "region": "us-east-1",
+      "resourceId": "my-lambda-function",
+      "functionUrl": "https://abc123xyz.lambda-url.us-east-1.on.aws/"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid activity ID
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Activity entry does not belong to the authenticated user
+- `404 Not Found`: Activity entry not found
+- `500 Internal Server Error`: Failed to retrieve activity
+
+---
+
+## Activity Entry Structure
+
+Each activity entry contains the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | number | Unique log entry ID |
+| `userId` | number | ID of the user who performed the action (kept for backward compatibility) |
+| `projectId` | number \| null | ID of the project (if action is project-related, kept for backward compatibility) |
+| `environmentId` | number \| null | ID of the environment (if action is environment-related, kept for backward compatibility) |
+| `user` | object \| null | User details object containing `id`, `name`, and `profileImage` |
+| `project` | object \| null | Project details object containing `slug` and `name` |
+| `environment` | object \| null | Environment details object containing `slug` and `name` |
+| `resourceType` | string \| null | Type of resource (e.g., `function`, `instance`, `database`) |
+| `resourceId` | number \| null | Database ID of the resource |
+| `action` | string | Action type (e.g., `create`, `update`, `delete`, `invoke`, `sync`) |
+| `description` | string \| null | Human-readable description of the action |
+| `metadata` | object \| null | Additional metadata (JSON object with action-specific data) |
+| `createdAt` | string | Timestamp when the action was performed (ISO 8601) |
+
+**Note:** The `user`, `project`, and `environment` fields may be `null` if the related entity doesn't exist or was deleted.
+
+---
+
+## Action Types
+
+Common action types that are logged:
+
+- **`create`**: Resource creation (functions, instances, databases, etc.)
+- **`update`**: Resource updates (code changes, configuration changes, etc.)
+- **`delete`**: Resource deletion
+- **`invoke`**: Function invocation
+- **`sync`**: Resource synchronization with cloud provider
+- **`connect`**: Resource connection creation
+- **`disconnect`**: Resource connection deletion
+
+---
+
+## Resource Types
+
+Common resource types that are logged:
+
+- `function`: Serverless functions (Lambda)
+- `instance`: EC2 instances
+- `database`: RDS databases
+- `storage_bucket`: S3 buckets
+- `static_website`: Static websites
+- `firewall`: Security groups
+- `cache_server`: ElastiCache servers
+
+---
+
+## Filtering Examples
+
+### Get all function-related activities
+```bash
+curl "https://api.gateways.app/api/activities?resourceType=function" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Get all create actions
+```bash
+curl "https://api.gateways.app/api/activities?action=create" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Get activities for a specific project
+```bash
+curl "https://api.gateways.app/api/activities?projectSlug=my-project" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Get activities for a specific project and environment
+```bash
+curl "https://api.gateways.app/api/activities?projectSlug=my-project&environmentSlug=production" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Combine multiple filters
+```bash
+curl "https://api.gateways.app/api/activities?resourceType=function&action=create&projectSlug=my-project&environmentSlug=production&limit=50" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+## Pagination
+
+The activities API supports pagination using `limit` and `offset` parameters:
+
+- **`limit`**: Maximum number of logs to return (default: 100, max: 1000)
+- **`offset`**: Number of logs to skip (default: 0)
+
+The response includes pagination metadata:
+- `total`: Total number of logs matching the filters
+- `limit`: Number of logs returned in this response
+- `offset`: Offset used for this request
+- `hasMore`: Boolean indicating if there are more logs available
+
+**Example:**
+```bash
+# First page (activities 1-100)
+curl "https://api.gateways.app/api/activities?limit=100&offset=0" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Second page (activities 101-200)
+curl "https://api.gateways.app/api/activities?limit=100&offset=100" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+## Automatic Logging
+
+The following actions are automatically logged:
+
+### Functions
+- ✅ Function creation
+- ✅ Function updates (code, handler, description)
+- ✅ Function deletion
+- ✅ Function invocation
+- ✅ Function synchronization
+
+### Other Resources
+Logging for other resource types (instances, databases, etc.) can be added by importing and using the activity logger utility in their respective route files.
+
+---
+
+## Notes
+
+- Activities are stored permanently and are not automatically deleted
+- Users can only view their own activities
+- Activities include IP addresses and user agents for security auditing
+- Metadata field contains JSON data with action-specific information
+- Activities are ordered by creation time (newest first) by default
+

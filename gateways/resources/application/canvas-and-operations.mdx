@@ -1,0 +1,26 @@
+---
+title: "Application: Canvas and operations"
+description: Application cards on the canvas, connections to other resources, deploy state, and deletion.
+---
+
+## On the canvas
+
+- Applications use the same **card** model as other resources: drag, select, open **configuration** or **deploy** from the panel.
+- **Upload type** is preserved on the card (`upload-app`, `github-repo`, `gitlab-repo`, `bitbucket-repo`, `docker-image`) so the correct panel (**UploadAppPanel**, **GitConfigurationPanel**, **DockerImagePanel**) opens when you reconfigure.
+
+## Connections
+
+- Connect applications to **databases** for data, **functions** for serverless work, and other targets as your **resource connection** rules allow.
+- Invalid edges are rejected or shown as errors per platform rules.
+
+## Operations
+
+- **Deploy / Redeploy:** Triggered from the panel after you change source, branch, image tag, env, or commands.
+- **Delete:** Uses the unified resource delete path for applications; the UI may confirm destruction of cloud resources (tasks, services) behind the app.
+- **Last deployed:** The card may show **last deployment** time derived from **`updatedAt`** or launch metadata depending on type.
+
+## APIs
+
+For REST details (create application, deploy, logs, env), see **[API documentation](/api/index)** → **Applications** and **Resources**.
+
+[← Application overview](/gateways/resources/application)

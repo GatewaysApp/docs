@@ -1,0 +1,36 @@
+---
+title: Account and workspace
+description: Account settings routes, workspace administration, session termination, and workspace invitations.
+---
+
+Account settings: **[console.gateways.app/account-settings](https://console.gateways.app/account-settings)**
+
+Account settings are reachable from the user menu or by direct navigation. The layout retains the global header but omits project and environment selectors to focus on identity and workspace administration.
+
+## Route matrix
+
+| Path | Purpose |
+| --- | --- |
+| `/account-settings` | Profile summary and navigation into subordinate settings. |
+| `/account-settings/security` | Password changes, two-factor authentication, and related controls when enabled. |
+| `/account-settings/sessions` | Active session review and revocation where supported. |
+| `/account-settings/workspace` | Workspace metadata, billing or plan association, and workspace lifecycle as configured. |
+| `/account-settings/members` | Workspace membership and role assignment when authorized. |
+
+The application may also route to `/{project}/{environment}/account-settings` to present account-related content with project context.
+
+## Workspace lifecycle
+
+Users without workspace membership may use **New workspace** (or equivalent) from the header. Required fields (name, identifier, plan selection) depend on billing integration.
+
+## Invitations
+
+Workspace invitations appear in the header notification area. **Accept** adds membership; **Decline** rejects the invitation. After acceptance, project lists may require a short refresh before new data appears.
+
+## Session termination
+
+**Log out** invalidates the client session and redirects to `/login`. Theme preference for the authenticated application remains in browser storage.
+
+## Email verification
+
+Unverified email-password accounts may show status in the user menu. Resend and verification flows, when available, are initiated from account settings.

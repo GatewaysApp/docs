@@ -1,0 +1,53 @@
+---
+title: Resource types
+description: Catalog of infrastructure and tooling you can add from Create—each type has its own page below.
+---
+
+Resources are created from **Create** on the architecture canvas. The catalog comes from your deployment’s **resource types** API (`resource_types` / subtypes). The console may **hide** a type if it is deactivated for your deployment or if your **workspace plan** is below the minimum tier required for that subtype.
+
+**Cloud account:** Most types require a **linked cloud provider** on the project (AWS, Azure, GCP, or others your deployment supports). Behavior and labels vary by provider (for example AWS-specific wording in the Create menu).
+
+**API subtype** strings are listed on each page; they match plan checks and REST APIs (see [API documentation](/api/index)).
+
+## All resource types
+
+### Compute
+
+- [Server](/gateways/resources/server) — `instance`
+- [Scalable server](/gateways/resources/scalable-server) — `scalable_server`
+- **Runtime** (`runtime`) — [Overview](/gateways/resources/runtime), [Families & versions](/gateways/resources/runtime/families-and-versions), [Application servers](/gateways/resources/runtime/application-servers), [Canvas & connections](/gateways/resources/runtime/canvas-and-connections)
+
+### Applications and data
+
+- **Application** (`application`) — [Overview](/gateways/resources/application), [Sources](/gateways/resources/application/sources), [Upload & build](/gateways/resources/application/upload-and-build), [Git repos](/gateways/resources/application/git-repositories), [Docker image](/gateways/resources/application/docker-image), [Canvas & operations](/gateways/resources/application/canvas-and-operations)
+- [Database](/gateways/resources/database) — `database` (engines and provider filters)
+- [Utilities](/gateways/resources/utilities) — `terminal`, `bucket_explorer`, `ide`, `db_monitor`, `subdomain`, `utility`
+
+### Networking and delivery
+
+- [Firewall](/gateways/resources/firewall) — `firewall`
+- [DNS](/gateways/resources/dns) — `dns`
+
+Some deployments also define **`load_balancer`** or **`cdn`** subtypes in the catalog API, but those types are **not active** in the console today—they are omitted from this guide until they ship.
+
+### Storage and hosting
+
+- [Storage bucket](/gateways/resources/storage-bucket) — `storage_bucket`
+- [Static website](/gateways/resources/static-website) — `static_website`
+
+### Cache and serverless
+
+- [Cache server](/gateways/resources/cache-server) — `cache_server`
+- [Function](/gateways/resources/function) — `function`
+
+### Canvas
+
+- [Resource connections](/gateways/resources/connections) — `resource_connection`
+
+## Plan and catalog behavior
+
+- **Inactive types:** If a subtype is turned off in the catalog API, it **disappears** from Create.
+- **Plan gating:** If your workspace plan is below `minPlanId` for a subtype, creation may be **blocked** with an upgrade hint.
+- **Provider filtering:** Database and DNS submenus **change** based on linked cloud (for example GCP/Azure database list).
+
+For HTTP details (paths, payloads, sync/delete), see **[API documentation](/api/index)** → **Resources**, **Resource connections**, and type-specific API guides.

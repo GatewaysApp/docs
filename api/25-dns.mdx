@@ -1,0 +1,592 @@
+---
+title: "DNS Management"
+description: "HTTP API: DNS Management"
+---
+
+# DNS Management API
+
+The DNS Management API allows you to manage DNS hosted zones and records across multiple providers (Route53 and Cloudflare).
+
+## Base URL
+
+All DNS endpoints are prefixed with:
+```
+/api/:projectSlug/:environmentSlug/dns
+```
+
+Where:
+- `projectSlug` - The slug of your project
+- `environmentSlug` - The slug of your environment
+
+---
+
+## Create DNS Hosted Zone
+
+Create a new DNS hosted zone.
+
+**Endpoint:** `POST /api/:projectSlug/:environmentSlug/dns`
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "name": "my-dns-zone",           // Required - User-friendly name
+  "domainName": "example.com",     // Required - Domain name for the hosted zone
+  "provider": "native",            // Optional - "native" (auto-detect), "route53", or "cloudflare" (default: "native")
+  "comment": "My DNS zone",        // Optional - Comment/description (Route53 only)
+  "positionX": 100,                // Optional - Canvas X coordinate
+  "positionY": 200,               // Optional - Canvas Y coordinate
+  "cloudflareApiToken": "..."      // Required for Cloudflare - Cloudflare API Token (encrypted and stored in secret_data column). If provided, auto-detects Cloudflare provider.
+}
+```
+
+**Provider Auto-Detection:**
+- If `provider` is set to `"native"` (or not provided), the system automatically detects the DNS provider:
+  - If `cloudflareApiToken` is provided → uses **Cloudflare**
+  - If project has an **AWS** cloud connection → uses **Route53**
+  - Otherwise, returns an error requesting either a Cloudflare token or AWS connection
+
+**Example Request (Route53):**
+```bash
+curl -X POST "https://api.gateways.app/api/my-project/production/dns" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "production-dns",
+    "domainName": "myapp.com",
+    "provider": "route53",
+    "comment": "Production DNS zone"
+  }'
+```
+
+**Example Request (Cloudflare):**
+```bash
+curl -X POST "https://api.gateways.app/api/my-project/production/dns" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "production-dns",
+    "domainName": "myapp.com",
+    "provider": "cloudflare",
+    "cloudflareApiToken": "your-cloudflare-api-token"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "DNS hosted zone created successfully",
+  "data": {
+    "id": 1,
+    "name": "production-dns",
+    "provider": "route53",
+    "domainName": "myapp.com",
+    "hostedZoneId": "Z1234567890ABC",
+    "nameServers": [
+      "ns-123.awsdns-12.com",
+      "ns-456.awsdns-45.net",
+      "ns-789.awsdns-78.org",
+      "ns-012.awsdns-01.co.uk"
+    ],
+    "comment": "Production DNS zone",
+    "status": "active",
+    "position": {
+      "x": 100,
+      "y": 200
+    },
+    "project": {
+      "id": 1,
+      "slug": "my-project",
+      "name": "My Project"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "production",
+      "name": "Production"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields, invalid domain name format, invalid provider, missing Cloudflare API token (for Cloudflare), or Cloudflare zone not found for domain
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Insufficient permissions or project access denied
+- `404 Not Found`: Project, environment, cloud connection, or Cloudflare zone not found
+- `500 Internal Server Error`: Failed to create/import hosted zone
+
+---
+
+## List DNS Hosted Zones
+
+Get all DNS hosted zones for a project and environment.
+
+**Endpoint:** `GET /api/:projectSlug/:environmentSlug/dns`
+
+**Authentication:** Required
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/my-project/production/dns" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "DNS zones retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "name": "production-dns",
+      "provider": "route53",
+      "domainName": "myapp.com",
+      "hostedZoneId": "Z1234567890ABC",
+      "nameServers": [
+        "ns-123.awsdns-12.com",
+        "ns-456.awsdns-45.net",
+        "ns-789.awsdns-78.org",
+        "ns-012.awsdns-01.co.uk"
+      ],
+      "comment": "Production DNS zone",
+      "status": "active",
+      "position": {
+        "x": 100,
+        "y": 200
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "staging-dns",
+      "provider": "route53",
+      "domainName": "staging.myapp.com",
+      "hostedZoneId": "Z0987654321XYZ",
+      "nameServers": [
+        "ns-321.awsdns-32.com",
+        "ns-654.awsdns-65.net"
+      ],
+      "comment": null,
+      "status": "active",
+      "position": {
+        "x": 300,
+        "y": 400
+      },
+      "createdAt": "2024-01-16T08:00:00.000Z",
+      "updatedAt": "2024-01-16T08:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized`: Missing or invalid authentication token
+- `404 Not Found`: Project or environment not found
+- `500 Internal Server Error`: Failed to retrieve DNS zones
+
+---
+
+## Get DNS Hosted Zone
+
+Get details of a specific DNS hosted zone.
+
+**Endpoint:** `GET /api/:projectSlug/:environmentSlug/dns/:id`
+
+**Authentication:** Required
+
+**Parameters:**
+- `id` (path) - The DNS zone ID
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/my-project/production/dns/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "DNS zone retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "production-dns",
+    "provider": "route53",
+    "domainName": "myapp.com",
+    "hostedZoneId": "Z1234567890ABC",
+    "nameServers": [
+      "ns-123.awsdns-12.com",
+      "ns-456.awsdns-45.net",
+      "ns-789.awsdns-78.org",
+      "ns-012.awsdns-01.co.uk"
+    ],
+    "comment": "Production DNS zone",
+    "status": "active",
+    "position": {
+      "x": 100,
+      "y": 200
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid DNS zone ID
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Access denied to this DNS zone
+- `404 Not Found`: DNS zone not found
+- `500 Internal Server Error`: Failed to retrieve DNS zone
+
+---
+
+## List DNS Records
+
+List all DNS records in a hosted zone.
+
+**Endpoint:** `GET /api/:projectSlug/:environmentSlug/dns/:id/records`
+
+**Authentication:** Required
+
+**Parameters:**
+- `id` (path) - The DNS zone ID
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/my-project/production/dns/1/records" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "DNS records retrieved successfully",
+  "count": 3,
+  "data": [
+    {
+      "name": "myapp.com.",
+      "type": "A",
+      "ttl": 300,
+      "values": ["192.0.2.1"]
+    },
+    {
+      "name": "www.myapp.com.",
+      "type": "CNAME",
+      "ttl": 300,
+      "values": ["myapp.com."]
+    },
+    {
+      "name": "api.myapp.com.",
+      "type": "A",
+      "ttl": 600,
+      "values": ["192.0.2.10", "192.0.2.11"]
+    }
+  ]
+}
+```
+
+**Note:** NS (Name Server) and SOA (Start of Authority) records are automatically filtered out from the response as they are managed by the DNS provider.
+
+---
+
+## DNS zone metadata: `dns_active`
+
+Each DNS zone resource has a `metadata.dns_active` flag indicating whether the Gateways verification TXT record is present for a domain in that zone.
+
+- **On zone create:** `dns_active` is set to `false`.
+- **When a subdomain DNS record is created** (via resource connections, e.g. subdomain → instance with DNS): a TXT record `_gateways_app.<recordName>` with value `installed` is created and the zone’s `dns_active` is set to `true`.
+- **To refresh `dns_active`:** use the **unified sync endpoint** (do not use the verify-domain GET for this). Sync resolves the verification TXT and updates `metadata.dns_active` to `true` or `false`.
+
+**Unified Sync Endpoint for DNS:**  
+`PUT /api/:projectSlug/:environmentSlug/resources/:resourceId/sync`
+
+Use the DNS zone’s resource `id` as `resourceId`. The sync checks `_gateways_app.<domain>` (using a subdomain in the zone if connected, otherwise the zone domain) and sets `metadata.dns_active` accordingly.
+
+**Example:**
+```bash
+curl -X PUT "https://api.gateways.app/api/my-project/production/resources/1/sync" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Response (DNS sync):**
+```json
+{
+  "message": "DNS verified (Gateways TXT record present)",
+  "data": {
+    "id": 1,
+    "resourceId": "Z123...",
+    "dns_active": true,
+    "domainChecked": "app.myapp.com",
+    "syncedAt": "2025-02-05T..."
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid DNS zone ID
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Access denied to this DNS zone
+- `404 Not Found`: DNS zone or cloud connection not found
+- `500 Internal Server Error`: Failed to list DNS records
+
+---
+
+## Create DNS Record
+
+Create or update a DNS record in a hosted zone.
+
+**Endpoint:** `POST /api/:projectSlug/:environmentSlug/dns/:id/records`
+
+**Authentication:** Required
+
+**Parameters:**
+- `id` (path) - The DNS zone ID
+
+**Request Body:**
+```json
+{
+  "recordName": "www.example.com",  // Required - Record name (use "@" for root domain)
+  "recordType": "A",                // Required - Record type (A, AAAA, CNAME, MX, TXT, etc.)
+  "values": ["192.0.2.1"],          // Required - Array of record values
+  "ttl": 300                        // Optional - Time to live in seconds (default: 300)
+}
+```
+
+**Example Request (A Record):**
+```bash
+curl -X POST "https://api.gateways.app/api/my-project/production/dns/1/records" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recordName": "www.myapp.com",
+    "recordType": "A",
+    "values": ["192.0.2.1"],
+    "ttl": 300
+  }'
+```
+
+**Example Request (CNAME Record):**
+```bash
+curl -X POST "https://api.gateways.app/api/my-project/production/dns/1/records" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recordName": "blog.myapp.com",
+    "recordType": "CNAME",
+    "values": ["myapp.com"],
+    "ttl": 300
+  }'
+```
+
+**Example Request (Root Domain):**
+```bash
+curl -X POST "https://api.gateways.app/api/my-project/production/dns/1/records" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recordName": "@",
+    "recordType": "A",
+    "values": ["192.0.2.1"],
+    "ttl": 300
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "DNS record created successfully",
+  "data": {
+    "recordName": "www.myapp.com.",
+    "recordType": "A",
+    "values": ["192.0.2.1"],
+    "ttl": 300,
+    "changeId": "C1234567890ABC",
+    "status": "PENDING"
+  }
+}
+```
+
+**Supported Record Types:**
+- `A` - IPv4 address
+- `AAAA` - IPv6 address
+- `CNAME` - Canonical name
+- `MX` - Mail exchange
+- `TXT` - Text record
+- `SRV` - Service record
+- `PTR` - Pointer record
+- `NS` - Name server (managed automatically)
+- `SOA` - Start of authority (managed automatically)
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields, invalid record type, or invalid values
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Access denied to this DNS zone
+- `404 Not Found`: DNS zone or cloud connection not found
+- `500 Internal Server Error`: Failed to create DNS record
+
+---
+
+## Delete DNS Record
+
+Delete a DNS record from a hosted zone.
+
+**Endpoint:** `DELETE /api/:projectSlug/:environmentSlug/dns/:id/records`
+
+**Authentication:** Required
+
+**Parameters:**
+- `id` (path) - The DNS zone ID
+
+**Request Body:**
+```json
+{
+  "recordName": "www.example.com",  // Required - Record name (use "@" for root domain)
+  "recordType": "A",                // Required - Record type (A, AAAA, CNAME, MX, TXT, etc.)
+  "values": ["192.0.2.1"],          // Required - Array of record values (must match exactly)
+  "ttl": 300                        // Optional - Time to live in seconds (default: 300)
+}
+```
+
+**Important:** The `values` array must match the exact values of the record you want to delete. If the record has multiple values, all values must be included.
+
+**Example Request (A Record):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/my-project/production/dns/1/records" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recordName": "www.myapp.com",
+    "recordType": "A",
+    "values": ["192.0.2.1"],
+    "ttl": 300
+  }'
+```
+
+**Example Request (CNAME Record):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/my-project/production/dns/1/records" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recordName": "blog.myapp.com",
+    "recordType": "CNAME",
+    "values": ["myapp.com"],
+    "ttl": 300
+  }'
+```
+
+**Example Request (Root Domain Record):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/my-project/production/dns/1/records" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recordName": "@",
+    "recordType": "A",
+    "values": ["192.0.2.1"],
+    "ttl": 300
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "DNS record deleted successfully",
+  "data": {
+    "recordName": "www.myapp.com.",
+    "recordType": "A",
+    "changeId": "C1234567890ABC",
+    "status": "PENDING"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields, invalid record type, or invalid values
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Access denied to this DNS zone
+- `404 Not Found`: DNS zone or cloud connection not found
+- `500 Internal Server Error`: Failed to delete DNS record
+
+**Note:** If the record does not exist or the values don't match exactly, the deletion may fail or have no effect. Make sure to use the exact values from the record you want to delete.
+
+---
+
+## Delete DNS Hosted Zone
+
+**Path:** `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`  
+Use the DNS resource’s **database ID** as `resourceId`. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id). All resource types (including DNS) are deleted via this unified path.
+
+**Query parameter:** `deleteFromCloud` (optional)
+- `true` (default): Delete connection-created DNS records and the hosted zone in the cloud (Route53, Cloudflare, GCP, Azure, etc.), remove resource connections, then soft-delete the resource.
+- `false`: Only remove the resource from the database (and its resource connections). The hosted zone and records are **not** deleted from the cloud.
+
+**Example (delete from cloud, default):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/my-project/production/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example (remove from database only):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/my-project/production/resources/1?deleteFromCloud=false" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Note:** To delete only specific records within a zone, use `DELETE /api/:projectSlug/:environmentSlug/dns/:id/records` (see above). That endpoint remains type-specific.
+
+---
+
+## DNS Providers
+
+### Currently Supported
+
+- **AWS Route53** (`route53`) - Fully supported
+  - Create hosted zones
+  - List hosted zones
+  - Create/update/delete DNS records
+  - Automatic name server assignment
+  - Alias A records for AWS resources (S3, CloudFront, ELB)
+
+- **Cloudflare** (`cloudflare`) - Fully supported
+  - Create hosted zones
+  - List hosted zones
+  - Create/update/delete DNS records
+  - Automatic name server assignment
+  - Supports standard DNS record types (A, AAAA, CNAME, MX, TXT, etc.)
+
+---
+
+## Notes
+
+1. **Domain Registration**: This API manages DNS hosted zones and records only. You must register your domain name with a domain registrar separately.
+
+2. **Name Servers**: After creating a hosted zone, you'll receive name servers. You need to update your domain's name servers at your domain registrar to point to these name servers for DNS to work.
+
+3. **DNS Propagation**: DNS changes may take several minutes to propagate globally. Changes made through this API are applied immediately but may not be visible everywhere right away.
+
+4. **TTL (Time To Live)**: The TTL value determines how long DNS resolvers cache your DNS records. Lower TTL values mean faster updates but more DNS queries. Common values:
+   - `300` (5 minutes) - Fast updates, suitable for development
+   - `3600` (1 hour) - Balanced, suitable for production
+   - `86400` (24 hours) - Slow updates, maximum caching
+
+5. **Record Name "@"**: Using `"@"` as the record name refers to the root domain (e.g., `example.com` for a zone with domain `example.com`).
+
+6. **Route53 Global Service**: Route53 is a global service, so region is set to `"global"` for all Route53 hosted zones.
+
+7. **Cloud Connection Required for Route53**: A valid AWS cloud connection is required for Route53 DNS management. Ensure your project has an active cloud connection before creating Route53 zones.
+
+8. **Cloudflare Zone Import**: For Cloudflare, the API searches for an existing zone by `domainName` in your Cloudflare account. The API does not create new Cloudflare zones - it only imports existing ones. If no zone is found for the domain, an error is returned.
+
+9. **Cloudflare Authentication**: For Cloudflare DNS zones, provide `cloudflareApiToken` in the request body when creating the DNS resource. The API token is encrypted and stored securely in the DNS resource's `secret_data` column. Each DNS resource can have its own Cloudflare API token, allowing you to use different accounts/tokens for different zones. The `secret_data` column is a generic field that can store encrypted sensitive data for various integrations.
+
+10. **Cloudflare Record Types**: Cloudflare supports standard DNS record types (A, AAAA, CNAME, MX, TXT, etc.). Note that Cloudflare does not support alias records like Route53, so CNAME records are used for hostnames and A records for IP addresses.
+
+11. **Provider-Specific Features**:
+    - **Route53**: Supports alias A records for AWS resources (S3, etc.), which are automatically created when connecting DNS to static websites where configured
+    - **Cloudflare**: Supports DNS proxy (orange cloud) feature, but this API uses DNS-only mode by default
+

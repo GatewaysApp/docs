@@ -1,0 +1,30 @@
+---
+title: Static website
+description: Static site hosting—API subtype static_website; provider-specific naming rules in the panel.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | **Static site hosting** (HTML/CSS/JS) backed by object storage and a web endpoint. |
+| **Create menu** | “Create a static website (S3 with hosting)” on AWS-flavored deployments. |
+| **API subtype** | `static_website`. |
+| **Panel** | **`StaticWebsiteConfigurationPanel`** — **website name**, **region**, optional **description**; **name validation follows the cloud** (AWS/GCP bucket-style naming vs Azure storage account rules). |
+
+## Configuration (typical)
+
+- **Region** — Same pattern as other regional resources (project region list with a sensible default).
+- **Name rules (examples from the UI)** — **Azure**: 3–24 characters, lowercase letters, numbers, hyphens. **AWS S3 / GCP GCS**: 3–63 characters, lowercase, letters, numbers, hyphens, periods; no consecutive periods; cannot look like an IP; must start and end with alphanumeric. Exact enforcement may include additional provider checks at deploy time.
+
+## Canvas and connections
+
+- Often paired with [DNS](/gateways/resources/dns) for custom domains; edge caching depends on what your deployment exposes in Create.
+
+## Operations
+
+- **Sync** and **delete** follow unified resources semantics for the environment.
+
+**API:** [API documentation](/api/index) → **Static websites**, **Resources**.
+
+[← Resource types hub](/gateways/resources)

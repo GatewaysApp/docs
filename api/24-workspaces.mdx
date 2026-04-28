@@ -1,0 +1,1672 @@
+---
+title: "Workspaces"
+description: "HTTP API: Workspaces"
+---
+
+# Workspaces API
+
+Workspaces are organizational units that allow multiple users to collaborate on projects. Each workspace has a pricing plan, and billing is managed at the workspace level. Users can be members of multiple workspaces with different roles (owner, admin, member).
+
+## Base Endpoint
+
+```
+/api/workspaces
+```
+
+## Authentication
+
+All workspace endpoints require authentication. Include your JWT token in the Authorization header:
+
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+## Workspace Roles
+
+- **owner**: Full control over the workspace, including deletion and member management
+- **admin**: Can manage members and update workspace settings (except deletion)
+- **member**: Can view and access workspace resources
+
+## Endpoints
+
+### List Workspaces
+
+Get all workspaces the current user is a member of.
+
+**Endpoint:** `GET /api/workspaces`
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Workspaces retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "name": "John's Workspace",
+      "slug": "johns-workspace",
+      "description": "Default workspace for John",
+      "profileImage": "https://example.com/images/workspace-avatar.png",
+      "planId": 1,
+      "isActive": true,
+      "userRole": "owner",
+      "joinedAt": "2024-01-15T10:30:00.000Z",
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "Team Workspace",
+      "slug": "team-workspace",
+      "description": "Shared team workspace",
+      "profileImage": null,
+      "planId": 2,
+      "isActive": true,
+      "userRole": "member",
+      "joinedAt": "2024-01-20T14:00:00.000Z",
+      "createdAt": "2024-01-10T09:00:00.000Z",
+      "updatedAt": "2024-01-20T14:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -X GET https://api.gateways.app/api/workspaces \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+### Get Workspace Details
+
+Get detailed information about a specific workspace, including pricing plan details and the user's role.
+
+**Endpoint:** `GET /api/workspaces/:workspaceSlug`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Workspace retrieved successfully",
+  "data": {
+      "id": 1,
+      "name": "John's Workspace",
+      "slug": "johns-workspace",
+      "description": "Default workspace for John",
+      "profileImage": "https://example.com/images/workspace-avatar.png",
+      "planId": 1,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z",
+      "plan": {
+      "id": 1,
+      "name": "Free",
+      "slug": "free",
+      "description": "Free tier with basic features",
+      "price": 0.00,
+      "pricePeriod": "month",
+      "isActive": true,
+      "restrictions": {
+        "projects": 1,
+        "environments_per_project": 1,
+        "resources": 3
+      },
+      "features": ["basic_support"]
+    },
+    "userRole": "owner"
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X GET https://api.gateways.app/api/workspaces/johns-workspace \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields (e.g., `name`), invalid name length (must be 1-100 characters), or invalid description length (must be at most 350 characters)
+- `401 Unauthorized`: Missing or invalid authentication token
+- `500 Internal Server Error`: Failed to create workspace
+
+---
+
+### Check Workspace Name Availability
+
+Check if a workspace name (slug) is available globally before creating a workspace.
+
+**Endpoint:** `GET /api/workspaces/check-name`
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `name` (required): The workspace name to check
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/workspaces/check-name?name=My%20New%20Workspace" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Name availability checked successfully",
+  "data": {
+    "name": "My New Workspace",
+    "slug": "my-new-workspace",
+    "available": true
+  }
+}
+```
+
+**Response Fields:**
+- `name`: The trimmed name that was checked
+- `slug`: The generated slug from the name
+- `available`: `true` if the slug is available (not taken), `false` if it's already in use
+
+**Error Responses:**
+- `400 Bad Request`: Missing or invalid `name` query parameter
+- `401 Unauthorized`: Missing or invalid authentication token
+- `500 Internal Server Error`: Failed to check name availability
+
+---
+
+### Create Workspace
+
+Create a new workspace (JSON only). The user who creates the workspace automatically becomes the owner. For workspace profile image, use **Upload Workspace Profile Image** after creation.
+
+**Endpoint:** `POST /api/workspaces`
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "name": "My New Workspace",  // Required (1-100 characters)
+  "description": "Workspace description"  // Optional (max 350 characters)
+}
+```
+
+**Note:**
+- **Slug is automatically generated from name** - it cannot be provided in the request body
+- Name must be between 1 and 100 characters
+- Description must be at most 350 characters (optional)
+- Profile image is not set on create; use `POST /api/workspaces/:workspaceSlug/profile/image` after creation
+- Use the JavaScript function in the "Slug Generation" section below to preview the slug that will be generated
+
+**Response:**
+```json
+{
+  "message": "Workspace created successfully",
+  "data": {
+      "id": 3,
+      "name": "My New Workspace",
+      "slug": "my-new-workspace",
+      "description": "Workspace description",
+      "profileImage": null,
+      "planId": 1,
+      "isActive": true,
+      "createdAt": "2024-01-25T12:00:00.000Z",
+      "updatedAt": "2024-01-25T12:00:00.000Z"
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/workspaces \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My New Workspace",
+    "description": "Workspace description"
+  }'
+```
+
+**Notes:**
+- New workspaces are automatically assigned the "Free" pricing plan
+- The creator is automatically added as an owner
+- Workspace slug is automatically generated from the name
+
+---
+
+### Slug Generation
+
+Slugs are automatically generated from names using the following JavaScript function. You can use this function in your frontend to preview the slug that will be generated:
+
+```javascript
+/**
+ * Generate a slug from a name
+ * @param {string} name - The name to convert to a slug
+ * @returns {string} A URL-friendly slug
+ */
+function generateSlug(name) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'untitled';
+}
+```
+
+**Examples:**
+- `"My Awesome Workspace"` → `"my-awesome-workspace"`
+- `"Team Workspace"` → `"team-workspace"`
+- `"Dev_Workspace"` → `"dev-workspace"`
+- `"API-Workspace@2024"` → `"api-workspace2024"`
+- `"---Special---"` → `"special"`
+- `"   Spaces   "` → `"spaces"`
+
+**Name Validation:**
+- Name must be between 1 and 100 characters
+- Any characters are allowed in the name - the slug will be generated automatically
+
+---
+
+### Get Workspace Usage
+
+Get usage statistics for a workspace, including current usage and plan limits for projects, environments, resources, and cloud connections.
+
+**Endpoint:** `GET /api/workspaces/:workspaceSlug/usage`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Workspace usage retrieved successfully",
+  "workspace": {
+    "id": 1,
+    "slug": "johns-workspace",
+    "name": "John's Workspace"
+  },
+  "plan": {
+    "id": 1,
+    "slug": "free",
+    "name": "Free Plan"
+  },
+  "usage": {
+    "projects": {
+      "current": 2,
+      "limit": 5,
+      "percentage": 40,
+      "unlimited": false
+    },
+    "environments": {
+      "current": 6,
+      "limit": null,
+      "percentage": null,
+      "unlimited": true
+    },
+    "resources": {
+      "current": 15,
+      "limit": 50,
+      "percentage": 30,
+      "unlimited": false
+    },
+    "cloudConnections": {
+      "current": 1,
+      "limit": 1,
+      "percentage": 100,
+      "unlimited": false
+    }
+  }
+}
+```
+
+**Fields:**
+- `workspace` - Workspace details (id, slug, name)
+- `plan` - Current pricing plan (id, slug, name)
+- `usage.projects` - Project usage (current count, limit, percentage used, unlimited flag)
+- `usage.environments` - Total environment count across all projects (no global limit)
+- `usage.resources` - Total resource count across all projects (current, limit, percentage, unlimited)
+- `usage.cloudConnections` - Cloud connection usage (current, limit, percentage, unlimited). **Only connections that are active and in `connected` status are counted**; pending, failed, or disconnected connections do not count toward the limit.
+
+**Note:** 
+- If `limit` is `null`, the plan has unlimited resources for that category
+- If `unlimited` is `true`, there is no limit enforced
+- `percentage` is calculated as `(current / limit) * 100` and capped at 100
+
+**Example:**
+```bash
+curl -X GET "https://api.gateways.app/api/workspaces/johns-workspace/usage" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+- `401 Unauthorized` - User ID not found
+- `400 Bad Request` - Invalid workspace slug
+- `404 Not Found` - Workspace does not exist
+- `403 Forbidden` - User does not have access to this workspace
+- `500 Internal Server Error` - Failed to retrieve workspace usage
+
+---
+
+### List Workspace Projects
+
+Get all projects for a specific workspace. Only members of the workspace can access this endpoint.
+
+**Endpoint:** `GET /api/workspaces/:workspaceSlug/projects`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Query Parameters:**
+- `include_inactive` (optional) - Include inactive projects (`true`/`false`, default: `false`)
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Projects retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "name": "My Project",
+      "slug": "my-project",
+      "description": "Project description",
+      "workspaceId": 1,
+      "workspaceSlug": "johns-workspace",
+      "userId": 1,
+      "isDefault": true,
+      "isActive": true,
+      "connectedCloudId": 5,
+      "connectedCloud": {
+        "id": 5,
+        "cloudType": "AWS",
+        "accountId": "123456789012",
+        "accountName": "My AWS Account",
+        "roleArn": "arn:aws:iam::123456789012:role/GatewaysApp-Role"
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+# List active projects only
+curl -X GET "https://api.gateways.app/api/workspaces/johns-workspace/projects" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Include inactive projects
+curl -X GET "https://api.gateways.app/api/workspaces/johns-workspace/projects?include_inactive=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+- `401 Unauthorized` - User ID not found
+- `400 Bad Request` - Invalid workspace slug
+- `404 Not Found` - Workspace does not exist
+- `403 Forbidden` - User does not have access to this workspace
+- `500 Internal Server Error` - Failed to retrieve projects
+
+---
+
+### Update Workspace
+
+Update workspace settings (JSON only). Only owners and admins can update. For profile image, use **Upload Workspace Profile Image** instead.
+
+**Endpoint:** `PATCH /api/workspaces/:workspaceSlug`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "name": "Updated Workspace Name",  // Optional
+  "slug": "updated-workspace-slug",  // Optional
+  "description": "Updated description",  // Optional (max 350 characters)
+  "billingAddressLine1": "123 Main St",  // Optional; shown on invoice PDF "Bill to"
+  "billingAddressLine2": "Suite 100",    // Optional
+  "billingCity": "San Francisco",         // Optional
+  "billingState": "CA",                  // Optional
+  "billingPostalCode": "94102",          // Optional
+  "billingCountry": "US"                 // Optional; ISO 2-letter (e.g. US)
+}
+```
+
+**Note:** 
+- `planId` cannot be changed via this endpoint. To change workspace plans, use the Payment APIs
+- Description must be at most 350 characters
+- Profile image cannot be set here; use `POST /api/workspaces/:workspaceSlug/profile/image`
+- `POST /api/payments/workspace/:workspaceSlug/upgrade-plan` - Upgrade plan (requires payment)
+- `POST /api/payments/workspace/:workspaceSlug/downgrade-plan` - Downgrade plan (immediate, no charge)
+
+See the [Payments API documentation](/api/25-payments) for details.
+
+**Response:**
+```json
+{
+  "message": "Workspace updated successfully",
+  "data": {
+      "id": 1,
+      "name": "Updated Workspace Name",
+      "slug": "updated-workspace-slug",
+      "description": "Updated description",
+      "profileImage": null,
+      "planId": 2,
+      "billingAddressLine1": "123 Main St",
+      "billingAddressLine2": "Suite 100",
+      "billingCity": "San Francisco",
+      "billingState": "CA",
+      "billingPostalCode": "94102",
+      "billingCountry": "US",
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-25T14:00:00.000Z"
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X PATCH https://api.gateways.app/api/workspaces/johns-workspace \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Workspace Name",
+    "description": "Updated description"
+  }'
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid name length (must be 1-100 characters) or invalid description length (must be at most 350 characters)
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: User is not an owner or admin
+- `404 Not Found`: Workspace does not exist
+- `500 Internal Server Error`: Failed to update workspace
+- `400 Bad Request` - Attempted to change planId (use Payment APIs instead)
+
+**Note:** Plan changes are not allowed via this endpoint. Use the [Payments API](/api/25-payments) to upgrade or downgrade workspace plans:
+- `POST /api/payments/workspace/:workspaceSlug/upgrade-plan` - Upgrade plan (requires payment)
+- `POST /api/payments/workspace/:workspaceSlug/downgrade-plan` - Downgrade plan (immediate)
+
+---
+
+### Upload Workspace Profile Image
+
+Upload a workspace profile image file (same behavior as user profile image). The image is optimized (resized to max 512px, compressed as JPEG) and stored in S3; the workspace's `profileImage` is updated with the returned URL. Only workspace owners and admins can upload.
+
+**Endpoint:** `POST /api/workspaces/:workspaceSlug/profile/image`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Authentication:** Required (owner or admin of the workspace)
+
+**Request:** `multipart/form-data` with a single file field:
+- **profileImage** (required): Image file (JPEG, PNG, GIF, or WebP). Max size is configurable (default 2MB; set `PROFILE_IMAGE_MAX_SIZE_MB` in env, 0.5–10).
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/workspaces/johns-workspace/profile/image" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "profileImage=@/path/to/workspace-avatar.jpg"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Workspace profile image uploaded successfully",
+  "data": {
+    "profileImage": "https://your-bucket.s3.region.amazonaws.com/profiles/workspaces/a1b2c3d4e5f6....jpg",
+    "workspace": {
+      "id": 1,
+      "name": "John's Workspace",
+      "slug": "johns-workspace",
+      "description": "Default workspace",
+      "profileImage": "https://your-bucket.s3.region.amazonaws.com/profiles/workspaces/a1b2c3d4e5f6....jpg",
+      "planId": 1,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-25T12:00:00.000Z"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing file, file too large (see `PROFILE_IMAGE_MAX_SIZE_MB`), or invalid content type (must be image/jpeg, image/png, image/gif, or image/webp)
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: User is not an owner or admin of the workspace
+- `404 Not Found`: Workspace does not exist
+- `503 Service Unavailable`: Profile storage not configured (PROFILE_STORAGE_BUCKET)
+- `500 Internal Server Error`: Upload or update failed
+
+---
+
+### Set Default Workspace
+
+Set a workspace as the user's default workspace. The user must be a member of the workspace.
+
+**Endpoint:** `PATCH /api/workspaces/:workspaceSlug/set-default`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace to set as default
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:** (Empty)
+
+**Response:**
+```json
+{
+  "message": "Default workspace set successfully",
+  "data": {
+    "workspaceId": 1,
+    "workspaceSlug": "johns-workspace",
+    "workspaceName": "John's Workspace"
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/workspaces/johns-workspace/set-default" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+**Error Responses:**
+- `401 Unauthorized` - User ID not found
+- `400 Bad Request` - Invalid workspace slug
+- `404 Not Found` - Workspace does not exist
+- `403 Forbidden` - User does not have access to this workspace
+- `500 Internal Server Error` - Failed to set default workspace
+
+---
+
+### Delete Workspace
+
+Delete a workspace (soft delete). Only owners can delete workspaces. **Password confirmation is required** and you must have at least one other workspace remaining.
+
+**Endpoint:** `DELETE /api/workspaces/:workspaceSlug`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "password": "your-account-password"  // Required - Password confirmation for security
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Workspace deleted successfully",
+  "defaultWorkspaceUpdated": true,  // Only present if deleted workspace was the default
+  "newDefaultWorkspaceId": 2        // Only present if default workspace was updated
+}
+```
+
+**Note:** If the deleted workspace was your default workspace, the system will automatically set your oldest remaining workspace (by creation date) as the new default. The response will include `defaultWorkspaceUpdated: true` and `newDefaultWorkspaceId` indicating the new default workspace.
+
+**Example:**
+```bash
+curl -X DELETE https://api.gateways.app/api/workspaces/johns-workspace \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password": "your-account-password"
+  }'
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Missing password, password authentication not available, or user has only one workspace
+- `401 Unauthorized` - Invalid password or missing authentication token
+- `403 Forbidden` - User is not an owner of the workspace
+- `404 Not Found` - Workspace does not exist
+
+**Security Notes:**
+
+- Password confirmation is required for this sensitive operation
+- You cannot delete your last workspace - you must have at least one workspace remaining
+- Only workspace owners can delete workspaces
+- This is a soft delete operation (workspace is marked as inactive)
+
+**Notes:**
+- This is a soft delete operation
+- All projects and resources in the workspace will be affected
+- If you delete your default workspace, the system will automatically set your oldest remaining workspace (by creation date) as the new default
+- The response will include `defaultWorkspaceUpdated` and `newDefaultWorkspaceId` if the default workspace was changed
+
+---
+
+### Transfer Workspace Ownership
+
+Transfer workspace ownership to another account. Only the current owner can initiate a transfer. The current owner becomes an **admin** after the transfer; the target user becomes the **owner**. The target user is specified by **email**. If the target user is not already a member, they are added as owner.
+
+**Endpoint:** `POST /api/workspaces/:workspaceSlug/transfer`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Request body:**
+- `email` (string, required) - Email of the account to transfer ownership to
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/workspaces/johns-workspace/transfer \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"newowner@example.com"}'
+```
+
+**Response:**
+```json
+{
+  "message": "Workspace ownership transferred successfully",
+  "data": {
+    "workspaceId": 1,
+    "workspaceSlug": "johns-workspace",
+    "workspaceName": "John's Workspace",
+    "previousOwnerId": 1,
+    "newOwnerId": 42,
+    "newOwnerEmail": "newowner@example.com",
+    "newOwnerName": "New Owner"
+  }
+}
+```
+
+**Error responses:**
+- `400` - Missing or invalid `email`, transferring to yourself, or you own only this workspace. You must own at least one other workspace before transferring this one. Create or get ownership of another workspace first.
+- `403` - Only the workspace owner can transfer ownership
+- `404` - Workspace not found, or no user found for the given email
+
+**Notes:**
+- Only the current **owner** can transfer ownership
+- You must **own at least one other workspace** before transferring this one. Create or get ownership of another workspace first; otherwise the transfer is rejected.
+- You cannot transfer the workspace to yourself
+- The previous owner retains access as an **admin**
+- If the target user is already a member, their role is updated to `owner`; otherwise they are added as a member with role `owner`
+
+---
+
+## Workspace Members
+
+### List Workspace Members
+
+Get all members of a workspace. Optionally filter by project and/or environment to return only members who have access to that project/environment.
+
+**Endpoint:** `GET /api/workspaces/:workspaceSlug/members`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+- `projectSlug` (query, optional) - Filter members by project slug. Returns only members who have access to this project
+- `environmentSlug` (query, optional) - Filter members by environment slug. Requires `projectSlug` to be provided. Returns only members who have access to this specific environment
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Workspace members and invitations retrieved successfully",
+  "count": 3,
+  "filter": {
+    "projectSlug": "my-project",
+    "environmentSlug": "production"
+  },
+  "data": [
+    {
+      "id": 1,
+      "workspaceId": 1,
+      "userId": 1,
+      "role": "owner",
+      "permissions": null,
+      "isActive": true,
+      "joinedAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z",
+      "user": {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "profileImage": null
+      }
+    },
+    {
+      "id": 2,
+      "workspaceId": 1,
+      "userId": 2,
+      "role": "billing",
+      "permissions": {
+        "canManageWorkspace": false,
+        "canManageMembers": false,
+        "canManageBilling": true,
+        "canManageProjects": false,
+        "canManageEnvironments": false,
+        "canViewResources": true,
+        "canCreateResources": false,
+        "canUpdateResources": false,
+        "canDeleteResources": false,
+        "canViewActivities": true,
+        "canManageSettings": false
+      },
+      "isActive": true,
+      "joinedAt": "2024-01-20T14:00:00.000Z",
+      "updatedAt": "2024-01-20T14:00:00.000Z",
+      "user": {
+        "id": 2,
+        "name": "Jane Smith",
+        "email": "jane@example.com",
+        "profileImage": null
+      }
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+# Get all members
+curl -X GET https://api.gateways.app/api/workspaces/johns-workspace/members \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get members with access to a specific project
+curl -X GET "https://api.gateways.app/api/workspaces/johns-workspace/members?projectSlug=my-project" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get members with access to a specific project and environment
+curl -X GET "https://api.gateways.app/api/workspaces/johns-workspace/members?projectSlug=my-project&environmentSlug=production" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+
+- `404 Not Found` - Workspace, project, or environment does not exist
+- `403 Forbidden` - User does not have access to this workspace
+
+**Notes:**
+- If `projectSlug` is provided, only members who have access to that project (based on their `projectPermissions`) will be returned
+- If both `projectSlug` and `environmentSlug` are provided, only members who have access to that specific environment will be returned
+- Members with `projectPermissions` set to `"*"` or `null` have access to all projects and will always be included
+- The `filter` object in the response is only included when filter parameters are provided
+
+---
+
+### Add Workspace Member (Send Invitation)
+
+Send an invitation to a user to join a workspace by email. The invitation must be accepted by the user before they are added to the workspace. Only owners and admins can send invitations.
+
+**Endpoint:** `POST /api/workspaces/:workspaceSlug/members`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "email": "newmember@example.com",
+  "role": "member",  // Optional, defaults to "member". Must be one of the available roles
+  "projectPermissions": "*"  // Optional. Either "*" for all projects/environments, or array like ["project/master", "project/dev", "project1/*"]
+}
+```
+
+**Note:** Custom permissions are not allowed. All permissions are defined by the role. Only projectPermissions can be specified to limit which projects/environments the member can access.
+
+**projectPermissions Format:**
+- `"*"` (string) - Grants access to all projects and all environments in the workspace
+- Array of strings - Grants access to specific project/environment combinations:
+  - `"projectSlug/environmentSlug"` - Specific project and environment (e.g., `"my-project/master"`)
+  - `"projectSlug/*"` - All environments in a specific project (e.g., `"my-project/*"`)
+  - Example: `["project/master", "project/dev", "project1/master", "project3/*"]`
+
+**Note:** All project slugs and environment slugs in `projectPermissions` must exist in the workspace. Invalid project/environment combinations will return a validation error.
+
+**Response:**
+```json
+{
+  "message": "Invitation sent successfully. The user will be added to the workspace when they accept the invitation.",
+  "data": {
+    "invitation": {
+      "id": 3,
+      "email": "newmember@example.com",
+      "role": "dev",
+      "status": "pending",
+      "expiresAt": "2024-02-01T15:00:00.000Z",
+      "token": "abc123def456...",
+      "workspaceName": "John's Workspace",
+      "workspaceSlug": "johns-workspace",
+      "workspaceProfileImage": "https://example.com/images/workspace-avatar.png"
+    }
+  }
+}
+```
+
+**Note:** 
+- An invitation is created whether the user exists or not
+- Existing users will receive an invitation that they must accept
+- New users will receive an invitation that they can accept after signing up
+- The invitation expires after 7 days by default
+
+**Examples:**
+
+Add member with access to all projects/environments:
+```bash
+curl -X POST https://api.gateways.app/api/workspaces/johns-workspace/members \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newmember@example.com",
+    "role": "member",
+    "projectPermissions": "*"
+  }'
+```
+
+Add member with access to specific projects/environments:
+```bash
+curl -X POST https://api.gateways.app/api/workspaces/johns-workspace/members \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newmember@example.com",
+    "role": "member",
+    "projectPermissions": ["project/master", "project/dev", "project1/master", "project3/*"]
+  }'
+```
+
+Add member without specifying projectPermissions (defaults to workspace role permissions):
+```bash
+curl -X POST https://api.gateways.app/api/workspaces/johns-workspace/members \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newmember@example.com",
+    "role": "member"
+  }'
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Missing email, invalid role, invalid permissions, or invalid projectPermissions (e.g., non-existent project/environment, invalid format)
+- `404 Not Found` - Workspace not found
+- `403 Forbidden` - User is not an owner or admin
+- `409 Conflict` - A pending invitation already exists for this email, or user is already a member of the workspace
+
+**projectPermissions Validation Errors:**
+- If `projectPermissions` is an array but contains invalid format: `"Invalid format: "entry". Expected format: "projectSlug/environmentSlug" or "projectSlug/*""`
+- If a project doesn't exist: `"Project "projectSlug" does not exist in this workspace"`
+- If an environment doesn't exist: `"Environment "environmentSlug" does not exist in project "projectSlug""`
+- If mixing "*" with array: `"Cannot mix "*" with specific project/environment entries"`
+
+---
+
+### Update Member Role and Project Permissions
+
+Update a member's role and/or project permissions in the workspace. Only owners and admins can update member roles and permissions. Custom permissions are not allowed - all permissions are defined by the role.
+
+**Endpoint:** `PATCH /api/workspaces/:workspaceSlug/members/:userId`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+- `userId` (path) - The ID of the user whose role/permissions to update
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "role": "dev",  // Required. Must be one of the available roles
+  "projectPermissions": "*"  // Optional. Either "*" for all projects/environments, or array like ["project/master", "project/dev", "project1/*"]
+}
+```
+
+**projectPermissions Format:**
+- `"*"` (string) - Grants access to all projects and all environments in the workspace
+- Array of strings - Grants access to specific project/environment combinations:
+  - `"projectSlug/environmentSlug"` - Specific project and environment (e.g., `"my-project/master"`)
+  - `"projectSlug/*"` - All environments in a specific project (e.g., `"my-project/*"`)
+  - Example: `["project/master", "project/dev", "project1/master", "project3/*"]`
+
+**Note:** All project slugs and environment slugs in `projectPermissions` must exist in the workspace. Invalid project/environment combinations will return a validation error.
+
+**Response:**
+```json
+{
+  "message": "Member role updated successfully",
+  "data": {
+    "id": 3,
+    "workspaceId": 1,
+    "userId": 3,
+    "role": "dev",
+    "permissions": {
+      "projectPermissions": ["project/master", "project/dev"]
+    },
+    "isActive": true,
+    "joinedAt": "2024-01-25T15:00:00.000Z",
+    "updatedAt": "2024-01-25T16:00:00.000Z",
+    "user": {
+      "id": 3,
+      "name": "Jane Developer",
+      "email": "jane@example.com",
+      "profileImage": null
+    }
+  }
+}
+```
+
+**Examples:**
+
+Update role only (projectPermissions preserved):
+```bash
+curl -X PATCH https://api.gateways.app/api/workspaces/johns-workspace/members/3   -H "Authorization: Bearer YOUR_JWT_TOKEN"   -H "Content-Type: application/json"   -d '{
+    "role": "dev"
+  }'
+```
+
+Update role and project permissions:
+```bash
+curl -X PATCH https://api.gateways.app/api/workspaces/johns-workspace/members/3   -H "Authorization: Bearer YOUR_JWT_TOKEN"   -H "Content-Type: application/json"   -d '{
+    "role": "dev",
+    "projectPermissions": ["project/master", "project/dev", "project1/*"]
+  }'
+```
+
+Update project permissions only (role stays the same):
+```bash
+curl -X PATCH https://api.gateways.app/api/workspaces/johns-workspace/members/3   -H "Authorization: Bearer YOUR_JWT_TOKEN"   -H "Content-Type: application/json"   -d '{
+    "role": "dev",
+    "projectPermissions": "*"
+  }'
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Missing role, invalid role value, or invalid projectPermissions (e.g., non-existent project/environment, invalid format)
+- `404 Not Found` - Workspace or member not found
+- `403 Forbidden` - User is not an owner or admin
+
+**projectPermissions Validation Errors:**
+- If `projectPermissions` is an array but contains invalid format: `"Invalid format: "entry". Expected format: "projectSlug/environmentSlug" or "projectSlug/*""`
+- If a project doesn't exist: `"Project "projectSlug" does not exist in this workspace"`
+- If an environment doesn't exist: `"Environment "environmentSlug" does not exist in project "projectSlug""`
+- If mixing "*" with array: `"Cannot mix "*" with specific project/environment entries"`
+
+**Note:** Custom permissions are not allowed. All permissions are defined by the role. Only projectPermissions can be customized to limit which projects/environments the member can access.
+
+---
+
+## Workspace Roles and Permissions
+
+### Available Roles
+
+| Role | Description | Key Permissions |
+|------|-------------|-----------------|
+| `owner` | Workspace owner with full access | All permissions, can delete workspace |
+| `admin` | Administrative access | All permissions except deleting workspace |
+| `billing` | Billing and financial access | Manage billing, payment methods, invoices, view resources (read-only for costs) |
+| `dev` | Developer access | Manage projects, environments, resources (full CRUD) |
+| `viewer` | Read-only access | View resources and activities only |
+| `member` | Default member role | Same as viewer (legacy support) |
+
+### Permission Types
+
+All permissions are boolean flags that control access to specific workspace features:
+
+| Permission | Description |
+|------------|-------------|
+| `canManageWorkspace` | Update workspace settings, delete workspace |
+| `canManageMembers` | Add/remove members, change roles and permissions |
+| `canManageBilling` | Manage payment methods, view invoices, upgrade/downgrade plans |
+| `canManageProjects` | Create/update/delete projects |
+| `canManageEnvironments` | Create/update/delete environments |
+| `canViewResources` | View all resources (instances, databases, etc.) |
+| `canCreateResources` | Create new resources |
+| `canUpdateResources` | Update existing resources |
+| `canDeleteResources` | Delete resources |
+| `canViewActivities` | View activity logs |
+| `canManageSettings` | Manage workspace and project settings |
+
+### Default Permissions by Role
+
+**Owner:**
+- All permissions enabled
+
+**Admin:**
+- All permissions enabled except `canManageWorkspace` (cannot delete workspace)
+
+**Billing:**
+- `canManageBilling`: ✅
+- `canViewResources`: ✅ (to understand costs)
+- `canViewActivities`: ✅
+- All other permissions: ❌
+
+**Dev:**
+- `canManageProjects`: ✅
+- `canManageEnvironments`: ✅
+- `canViewResources`: ✅
+- `canCreateResources`: ✅
+- `canUpdateResources`: ✅
+- `canDeleteResources`: ✅
+- `canViewActivities`: ✅
+- All other permissions: ❌
+
+**Viewer:**
+- `canViewResources`: ✅
+- `canViewActivities`: ✅
+- All other permissions: ❌
+
+**Member:**
+- Same as Viewer (legacy support)
+
+### Custom Permissions
+
+When adding or updating a member, you can provide custom permissions that override the role defaults:
+
+```json
+{
+  "role": "dev",
+  "permissions": {
+    "canCreateResources": false,  // Override: dev usually can create, but this one cannot
+    "canUpdateResources": true    // Explicit permission
+  }
+}
+```
+
+Custom permissions are merged with role defaults. Any permission not specified uses the role's default value.
+
+---
+
+### Get Member Permissions
+
+Get the effective permissions and project permissions for a workspace member. Returns role-based permissions and project permissions (if set).
+
+**Endpoint:** `GET /api/workspaces/:workspaceSlug/members/:userId/permissions`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+- `userId` (path) - The ID of the user
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Member permissions retrieved successfully",
+  "data": {
+    "userId": 3,
+    "role": "dev",
+    "permissions": {
+      "canManageWorkspace": false,
+      "canManageMembers": false,
+      "canManageBilling": false,
+      "canManageProjects": true,
+      "canManageEnvironments": true,
+      "canViewResources": true,
+      "canCreateResources": true,
+      "canUpdateResources": true,
+      "canDeleteResources": true,
+      "canViewActivities": true,
+      "canManageSettings": false
+    },
+    "projectPermissions": ["project/master", "project/dev", "project1/*"]
+  }
+}
+```
+
+**Response when projectPermissions is "*" (all projects/environments):**
+```json
+{
+  "message": "Member permissions retrieved successfully",
+  "data": {
+    "userId": 3,
+    "role": "dev",
+    "permissions": {
+      "canManageWorkspace": false,
+      "canManageMembers": false,
+      "canManageBilling": false,
+      "canManageProjects": true,
+      "canManageEnvironments": true,
+      "canViewResources": true,
+      "canCreateResources": true,
+      "canUpdateResources": true,
+      "canDeleteResources": true,
+      "canViewActivities": true,
+      "canManageSettings": false
+    },
+    "projectPermissions": "*"
+  }
+}
+```
+
+**Response when no projectPermissions are set:**
+```json
+{
+  "message": "Member permissions retrieved successfully",
+  "data": {
+    "userId": 3,
+    "role": "dev",
+    "permissions": {
+      "canManageWorkspace": false,
+      "canManageMembers": false,
+      "canManageBilling": false,
+      "canManageProjects": true,
+      "canManageEnvironments": true,
+      "canViewResources": true,
+      "canCreateResources": true,
+      "canUpdateResources": true,
+      "canDeleteResources": true,
+      "canViewActivities": true,
+      "canManageSettings": false
+    },
+    "projectPermissions": null
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X GET https://api.gateways.app/api/workspaces/johns-workspace/members/3/permissions \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Invalid user ID
+- `404 Not Found` - Workspace or member not found
+- `403 Forbidden` - User does not have access to this workspace
+
+**Note:**
+- `permissions` - Contains role-based permissions (defined by the role)
+- `projectPermissions` - Contains project/environment access restrictions (null if not set, "*" for all, or array of specific project/environment combinations)
+
+---
+
+### Remove Workspace Member
+
+Remove a member from a workspace. Only owners and admins can remove members.
+
+**Endpoint:** `DELETE /api/workspaces/:workspaceSlug/members/:userId`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+- `userId` (path) - The ID of the user to remove
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Member removed from workspace successfully"
+}
+```
+
+**Example:**
+```bash
+curl -X DELETE https://api.gateways.app/api/workspaces/johns-workspace/members/3 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Cannot remove the last owner from a workspace
+- `404 Not Found` - Workspace or member not found
+- `403 Forbidden` - User is not an owner or admin
+
+**Notes:**
+- You cannot remove the last owner from a workspace
+- To remove the last owner, you must either transfer ownership to another member first or delete the workspace
+
+---
+
+## Workspace Roles
+
+### List Workspace Roles
+
+Get all available workspace roles with their permissions. Roles are managed by administrators and cannot be created, updated, or deleted by users.
+
+**Endpoint:** `GET /api/workspaces/roles`
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Query Parameters:**
+- `include_inactive` (optional): Include inactive roles. Set to `"true"` to include inactive roles. Default: `false`
+
+**Response:**
+```json
+{
+  "message": "Workspace roles retrieved successfully",
+  "count": 6,
+  "data": [
+    {
+      "id": 1,
+      "code": "owner",
+      "name": "Owner",
+      "description": "Workspace owner with full access",
+      "permissions": {
+        "canManageWorkspace": true,
+        "canManageMembers": true,
+        "canManageBilling": true,
+        "canManageProjects": true,
+        "canManageEnvironments": true,
+        "canViewResources": true,
+        "canCreateResources": true,
+        "canUpdateResources": true,
+        "canDeleteResources": true,
+        "canViewActivities": true,
+        "canManageSettings": true
+      },
+      "isSystemRole": true,
+      "isActive": true,
+      "displayOrder": 1,
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "code": "billing",
+      "name": "Billing Manager",
+      "description": "Manage billing, payment methods, and invoices",
+      "permissions": {
+        "canManageWorkspace": false,
+        "canManageMembers": false,
+        "canManageBilling": true,
+        "canManageProjects": false,
+        "canManageEnvironments": false,
+        "canViewResources": true,
+        "canCreateResources": false,
+        "canUpdateResources": false,
+        "canDeleteResources": false,
+        "canViewActivities": true,
+        "canManageSettings": false
+      },
+      "isSystemRole": false,
+      "isActive": true,
+      "displayOrder": 3,
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -X GET "https://api.gateways.app/api/workspaces/roles" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Include inactive roles
+curl -X GET "https://api.gateways.app/api/workspaces/roles?include_inactive=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+**Note:** Roles are managed by system administrators. Users cannot create, update, or delete roles. All permissions are defined by the role - custom permission overrides are not allowed.
+
+---
+
+## Workspace Invitations
+
+### Get Pending Invitations
+
+Get all pending workspace invitations for the current user.
+
+**Endpoint:** `GET /api/workspaces/invitations/pending`
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Pending invitations retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "workspaceId": 1,
+      "email": "newuser@example.com",
+      "role": "dev",
+      "permissions": null,
+      "invitedBy": 2,
+      "token": "abc123...",
+      "status": "pending",
+      "expiresAt": "2024-01-30T10:00:00.000Z",
+      "acceptedAt": null,
+      "createdAt": "2024-01-23T10:00:00.000Z",
+      "updatedAt": "2024-01-23T10:00:00.000Z",
+      "workspaceName": "John's Workspace",
+      "workspaceSlug": "johns-workspace",
+      "workspaceProfileImage": "https://example.com/images/workspace-avatar.png",
+      "invitedByName": "John Doe",
+      "invitedByEmail": "john@example.com"
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -X GET https://api.gateways.app/api/workspaces/invitations/pending \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+### Accept Invitation
+
+Accept a workspace invitation. This will add you to the workspace with the specified role.
+
+**Endpoint:** `POST /api/workspaces/invitations/:invitationId/accept`
+
+**Parameters:**
+- `invitationId` (path) - The ID of the invitation to accept
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Invitation accepted successfully",
+  "data": {
+    "workspace": {
+      "id": 1,
+      "name": "John's Workspace",
+      "slug": "johns-workspace"
+    },
+    "role": "dev",
+    "permissions": {
+      "canManageProjects": true,
+      "canManageEnvironments": true,
+      "canViewResources": true,
+      "canCreateResources": true,
+      "canUpdateResources": true,
+      "canDeleteResources": true,
+      "canViewActivities": true
+    }
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/workspaces/invitations/1/accept \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+
+- `404 Not Found` - Invitation not found
+- `403 Forbidden` - Invitation is not for your email address
+- `400 Bad Request` - Invitation has already been accepted/expired/cancelled
+- `409 Conflict` - You are already a member of this workspace
+
+---
+
+### Decline Invitation
+
+Decline a workspace invitation. This will mark the invitation as cancelled.
+
+**Endpoint:** `POST /api/workspaces/invitations/:invitationId/decline`
+
+**Parameters:**
+- `invitationId` (path) - The ID of the invitation to decline
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Invitation declined successfully"
+}
+```
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/workspaces/invitations/1/decline \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+
+- `404 Not Found` - Invitation not found
+- `403 Forbidden` - Invitation is not for your email address
+- `400 Bad Request` - Invitation has already been accepted/expired/cancelled
+
+---
+
+## Workspace Integration with Other APIs
+
+### Projects
+
+When creating a project via `POST /api/projects`, you can optionally specify a `workspaceSlug` in the request body:
+
+```json
+{
+  "name": "My Project",
+  "workspaceSlug": "johns-workspace"  // Optional, defaults to user's first workspace
+}
+```
+
+If `workspaceSlug` is not provided, the project will be created in the user's first workspace.
+
+All projects returned by `GET /api/projects` include a `workspaceId` field:
+
+```json
+{
+  "id": 1,
+  "name": "My Project",
+  "workspaceId": 1,  // Workspace ID
+  "slug": "my-project",
+  ...
+}
+```
+
+### User Profile
+
+The user profile endpoint `GET /api/users/profile` now includes a `workspaces` array:
+
+```json
+{
+  "message": "Profile retrieved successfully",
+  "data": {
+    "id": 1,
+    "email": "john@example.com",
+    "name": "John Doe",
+    ...
+    "workspaces": [
+      {
+        "id": 1,
+        "name": "John's Workspace",
+        "slug": "johns-workspace",
+        "description": "Default workspace",
+        "planId": 1,
+        "isActive": true,
+        "userRole": "owner",
+        "joinedAt": "2024-01-15T10:30:00.000Z",
+        "createdAt": "2024-01-15T10:30:00.000Z",
+        "updatedAt": "2024-01-15T10:30:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+### Pricing Plans
+
+Workspaces are associated with pricing plans. When creating a workspace, it's automatically assigned the "Free" plan. 
+
+**Important:** Plan changes must be done through the Payment APIs, not via the workspace update endpoint:
+- Use `POST /api/payments/workspace/:workspaceSlug/upgrade-plan` to upgrade to a paid plan (requires payment)
+- Use `POST /api/payments/workspace/:workspaceSlug/downgrade-plan` to downgrade to a lower tier (immediate, no refund)
+
+See the [Pricing Plans API documentation](/api/23-pricing-plans) for more details about available plans and restrictions.
+See the [Payments API documentation](/api/25-payments) for information on how to change workspace plans.
+
+---
+
+## Access Control
+
+All resource operations (creating projects, environments, resources, etc.) now check workspace membership instead of user ownership. Users must be members of a workspace to access projects and resources within that workspace.
+
+When accessing resources via project slugs (e.g., `GET /api/:projectSlug/:environmentSlug/resources`), the system:
+1. Finds the project by slug
+2. Identifies the workspace associated with the project
+3. Verifies the user is a member of that workspace
+4. Returns 403 Forbidden if the user is not a workspace member
+
+---
+
+## Error Codes
+
+| Status Code | Description |
+|------------|-------------|
+| 200 | Success |
+| 201 | Created |
+| 400 | Bad Request (missing fields, invalid data) |
+| 401 | Unauthorized (missing or invalid token) |
+| 403 | Forbidden (insufficient permissions) |
+| 404 | Not Found (workspace, user, or member not found) |
+| 409 | Conflict (member already exists) |
+| 500 | Internal Server Error |
+
+---
+
+## Examples
+
+### Complete Workflow: Create Workspace and Add Members
+
+```bash
+# 1. Create a new workspace
+curl -X POST https://api.gateways.app/api/workspaces \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Team Workspace",
+    "description": "Shared workspace for our team"
+  }'
+
+# 2. Add an admin member
+curl -X POST https://api.gateways.app/api/workspaces/team-workspace/members \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@example.com",
+    "role": "admin"
+  }'
+
+# 3. Add a regular member
+curl -X POST https://api.gateways.app/api/workspaces/team-workspace/members \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "member@example.com",
+    "role": "member"
+  }'
+
+# 4. List all members
+curl -X GET https://api.gateways.app/api/workspaces/team-workspace/members \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# 5. Create a project in this workspace
+curl -X POST https://api.gateways.app/api/projects \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Team Project",
+    "workspaceSlug": "team-workspace"
+  }'
+```
+
+---
+
+## Notes
+
+- Each user automatically gets a default workspace created on signup (named "{FirstName}'s Workspace")
+- Workspaces can have multiple owners, but at least one owner must always exist
+- Billing and plan restrictions are managed at the workspace level
+- All projects belong to a workspace, and workspace membership determines access to projects and resources
+- Project slugs are globally unique across all workspaces
+

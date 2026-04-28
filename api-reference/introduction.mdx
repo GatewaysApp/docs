@@ -1,0 +1,31 @@
+---
+title: API reference
+description: How to authenticate, where the full REST catalog lives, and how this tab is organized.
+---
+
+Programmatic access to Gateways uses **HTTPS** against the API host (see **[Base URL](/api/index#base-url)** on the main API page). This documentation set includes **authentication**, **every REST topic** (projects, resources, workspaces, billing, and more), and **example** request shapes.
+
+## Where to read first
+
+1. **[Authentication & API access](/api/00-authentication-access)** — Session **JWT**, **API keys** (`sk_`), **`X-API-Key`**, **WebSocket `?token=`**, and credential restrictions.
+2. **[API documentation](/api/index)** — Master index: base URL, response formats, pagination, and a **numbered list of all API guides** with links.
+
+Use the **API reference** tab sidebar to open any topic (Authentication, Projects, Resources, DNS, Functions, and so on).
+
+## Authentication at a glance
+
+```http
+Authorization: Bearer <session_jwt>
+```
+
+or, for API keys created under **Account → API keys** (via **`/api/users/api-keys`**):
+
+```http
+X-API-Key: sk_…
+```
+
+See **[Authentication & API access](/api/00-authentication-access)** for the full rules.
+
+## OpenAPI
+
+The repo may bundle an OpenAPI description under **`api-reference/openapi.json`**. Treat it as a supplement: the **MDX topic pages** (`/api/01-authentication`, `/api/05-resources`, …) are the detailed, hand-maintained reference for Gateways.

@@ -1,0 +1,966 @@
+---
+title: "Authentication & User Management"
+description: "HTTP API: Authentication & User Management"
+---
+
+# Authentication & User Management API
+
+## Overview
+
+The Authentication & User Management API provides endpoints for user registration, authentication, password management, profile management, two-factor authentication (2FA), and session management.
+
+For **API keys** (`sk_…`), **`X-API-Key` / Bearer usage**, **WebSocket URL `token=`**, and **which routes accept keys vs session JWT**, see **[Authentication & API access](/api/00-authentication-access)**.
+
+**Base Endpoints:**
+- `/api/auth` - Authentication endpoints
+- `/api/users` - User management and session management endpoints
+
+All user management and session endpoints require authentication unless otherwise specified.
+
+---
+
+## Authentication Endpoints
+
+### Signup
+
+Register a new user account.
+
+**Endpoint:** `POST /api/auth/signup`
+
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "name": "John Doe"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/auth/signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!",
+    "name": "John Doe"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "user@example.com",
+      "name": "John Doe"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "refresh_token_here",
+    "expiresAt": "2024-01-22T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields, invalid email format, or weak password
+- `409 Conflict`: Email already exists
+- `500 Internal Server Error`: Registration failed
+
+---
+
+### Login
+
+Authenticate and create a new session. If two-factor authentication (2FA) is enabled, the response will require additional verification.
+
+**Endpoint:** `POST /api/auth/login`
+
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+**Example Response (2FA Not Enabled):**
+```json
+{
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "user@example.com",
+      "name": "John Doe"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "refresh_token_here",
+    "expiresAt": "2024-01-22T10:30:00.000Z"
+  }
+}
+```
+
+**Example Response (2FA Enabled):**
+```json
+{
+  "message": "2FA verification required",
+  "requires2FA": true,
+  "data": {
+    "verificationToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "sessionId": 123
+  }
+}
+```
+
+**Note:** If 2FA is enabled, you must complete the 2FA verification using the `/api/auth/login/verify-2fa` endpoint before the session is activated.
+
+**Error Responses:**
+- `400 Bad Request`: Missing email or password
+- `401 Unauthorized`: Invalid credentials
+- `403 Forbidden`: Account is inactive
+- `500 Internal Server Error`: Login failed
+
+---
+
+### Verify 2FA and Complete Login
+
+Complete login by verifying the two-factor authentication code. This endpoint is only required when 2FA is enabled for the user.
+
+**Endpoint:** `POST /api/auth/login/verify-2fa`
+
+**Authentication:** Not required (uses verification token from login)
+
+**Request Body:**
+```json
+{
+  "verificationToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "code": "123456"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/auth/login/verify-2fa" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "verificationToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "code": "123456"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "2FA verification successful",
+  "data": {
+    "user": {
+      "id": 1,
+      "email": "user@example.com",
+      "name": "John Doe"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "refresh_token_here",
+    "expiresAt": "2024-01-22T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields or 2FA not enabled
+- `401 Unauthorized`: Invalid verification token or incorrect code
+- `404 Not Found`: User or session not found
+- `500 Internal Server Error`: Verification failed
+
+---
+
+### Forgot Password
+
+Request a password reset email.
+
+**Endpoint:** `POST /api/auth/forgot-password`
+
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/auth/forgot-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "If an account exists with that email, a password reset link has been sent."
+}
+```
+
+**Note:** This endpoint always returns success for security reasons, even if the email doesn't exist.
+
+---
+
+### Reset Password
+
+Reset password using a reset token from the email.
+
+**Endpoint:** `POST /api/auth/reset-password`
+
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "token": "reset-token-from-email",
+  "newPassword": "NewSecurePass123!"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/auth/reset-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "reset-token-from-email",
+    "newPassword": "NewSecurePass123!"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Password reset successfully. Please login with your new password."
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing token or newPassword, invalid/expired token, or weak password
+- `500 Internal Server Error`: Password reset failed
+
+**Note:** All existing sessions are deactivated when password is reset.
+
+---
+
+### Logout
+
+Logout from the current session.
+
+**Endpoint:** `POST /api/auth/logout`
+
+**Authentication:** Required
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/auth/logout" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+---
+
+### Logout All Sessions
+
+Logout from all active sessions.
+
+**Endpoint:** `POST /api/auth/logout-all`
+
+**Authentication:** Required
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/auth/logout-all" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "All sessions logged out successfully"
+}
+```
+
+---
+
+## User Management Endpoints
+
+### Get Profile
+
+Get the current user's profile information.
+
+**Endpoint:** `GET /api/users/profile`
+
+**Authentication:** Required
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/users/profile" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Profile retrieved successfully",
+  "data": {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "John Doe",
+    "profileImage": "https://example.com/profile.jpg",
+    "authProvider": "email",
+    "emailVerified": true,
+    "twoFactorEnabled": false,
+    "defaultWorkspaceId": 1,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z",
+    "pendingInvitationsCount": 2,
+    "workspaces": [
+      {
+        "id": 1,
+        "name": "John's Workspace",
+        "slug": "johns-workspace",
+        "description": "Default workspace for John",
+        "profileImage": "https://example.com/images/workspace-avatar.png",
+        "planId": 1,
+        "isActive": true,
+        "userRole": "owner",
+        "permissions": {
+          "canManageWorkspace": true,
+          "canManageMembers": true,
+          "canManageBilling": true,
+          "canManageProjects": true,
+          "canManageEnvironments": true,
+          "canViewResources": true,
+          "canCreateResources": true,
+          "canUpdateResources": true,
+          "canDeleteResources": true,
+          "canViewActivities": true,
+          "canManageSettings": true
+        },
+        "joinedAt": "2024-01-15T10:30:00.000Z",
+        "createdAt": "2024-01-15T10:30:00.000Z",
+        "updatedAt": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "pendingInvitations": [
+      {
+        "id": 1,
+        "workspaceId": 2,
+        "workspaceName": "Team Workspace",
+        "workspaceSlug": "team-workspace",
+        "workspaceProfileImage": "https://example.com/images/team-workspace-avatar.png",
+        "role": "dev",
+        "permissions": null,
+        "invitedByName": "Jane Smith",
+        "invitedByEmail": "jane@example.com",
+        "expiresAt": "2024-01-30T10:00:00.000Z",
+        "createdAt": "2024-01-23T10:00:00.000Z"
+      },
+      {
+        "id": 2,
+        "workspaceId": 3,
+        "workspaceName": "Project Alpha",
+        "workspaceSlug": "project-alpha",
+        "workspaceProfileImage": null,
+        "role": "viewer",
+        "permissions": null,
+        "invitedByName": "Bob Johnson",
+        "invitedByEmail": "bob@example.com",
+        "expiresAt": "2024-02-01T10:00:00.000Z",
+        "createdAt": "2024-01-24T10:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+**Response Fields:**
+- `defaultWorkspaceId`: ID of the user's default workspace (null if not set). This workspace will be opened by default when the user logs in.
+- `workspaces`: Array of workspaces the user is a member of, each containing:
+  - `id`: Workspace ID
+  - `name`: Workspace name
+  - `slug`: Workspace slug (used in URLs)
+  - `description`: Workspace description
+  - `profileImage`: Workspace profile image URL (null if not set)
+  - `planId`: Current pricing plan ID
+  - `isActive`: Whether the workspace is active
+  - `userRole`: User's role in this workspace (owner, admin, member, billing, dev, viewer)
+  - `permissions`: User's effective permissions in this workspace (merged from role defaults and custom permissions)
+  - `joinedAt`: When the user joined this workspace
+  - `createdAt`: When the workspace was created
+  - `updatedAt`: When the workspace was last updated
+- `pendingInvitationsCount`: Number of pending workspace invitations (useful for notification badges)
+- `pendingInvitations`: Array of pending invitation objects containing:
+  - `id`: Invitation ID
+  - `workspaceId`: ID of the workspace
+  - `workspaceName`: Name of the workspace
+  - `workspaceSlug`: Slug of the workspace
+  - `workspaceProfileImage`: Profile image URL of the workspace (null if not set)
+  - `role`: Role assigned in the invitation
+  - `permissions`: Custom permissions (if any)
+  - `invitedByName`: Name of the user who sent the invitation
+  - `invitedByEmail`: Email of the user who sent the invitation
+  - `expiresAt`: Expiration date of the invitation
+  - `createdAt`: When the invitation was created
+
+---
+
+### Upload Profile Image
+
+Upload a profile image file. The image is optimized (resized to max 512px, compressed as JPEG) and stored in S3; the user's `profileImage` is updated with the returned URL. Use this endpoint to set or change the profile picture; use **Update Profile** for name and email only.
+
+**Endpoint:** `POST /api/users/profile/image`
+
+**Authentication:** Required
+
+**Request:** `multipart/form-data` with a single file field:
+- **profileImage** (required): Image file (JPEG, PNG, GIF, or WebP). Max size is configurable (default 2MB; set `PROFILE_IMAGE_MAX_SIZE_MB` in env, 0.5–10).
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/users/profile/image" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "profileImage=@/path/to/photo.jpg"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Profile image uploaded successfully",
+  "data": {
+    "profileImage": "https://your-bucket.s3.region.amazonaws.com/profiles/users/a1b2c3d4e5f6....jpg",
+    "user": {
+      "id": 1,
+      "email": "user@example.com",
+      "name": "John Smith",
+      "profileImage": "https://your-bucket.s3.region.amazonaws.com/profiles/users/a1b2c3d4e5f6....jpg",
+      "authProvider": "email",
+      "emailVerified": true,
+      "twoFactorEnabled": false,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T11:45:00.000Z"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing file, file too large (see `PROFILE_IMAGE_MAX_SIZE_MB`), or invalid content type (must be image/jpeg, image/png, image/gif, or image/webp)
+- `401 Unauthorized`: Missing or invalid authentication token
+- `503 Service Unavailable`: Profile storage not configured (PROFILE_STORAGE_BUCKET)
+- `500 Internal Server Error`: Upload or update failed
+
+---
+
+### Update Profile
+
+Update user profile information (name, email). For profile image, use **Upload Profile Image** instead.
+
+**Endpoint:** `PATCH /api/users/profile`
+
+**Authentication:** Required
+
+**Request Body:** (all fields are optional; `application/json` only)
+```json
+{
+  "name": "Updated Name",
+  "email": "newemail@example.com"
+}
+```
+
+**Example Request:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/users/profile" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Smith",
+    "email": "johnsmith@example.com"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Profile updated successfully",
+  "data": {
+    "id": 1,
+    "email": "johnsmith@example.com",
+    "name": "John Smith",
+    "profileImage": null,
+    "authProvider": "email",
+    "emailVerified": false,
+    "twoFactorEnabled": false,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T11:45:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid email format, empty name, or no fields provided
+- `401 Unauthorized`: Missing or invalid authentication token
+- `409 Conflict`: Email already in use by another account
+- `500 Internal Server Error`: Failed to update profile
+
+**Note:** Changing email address will reset email verification status.
+
+---
+
+### Change Password
+
+Change the user's password.
+
+**Endpoint:** `POST /api/users/change-password`
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "currentPassword": "OldPass123!",
+  "newPassword": "NewPass123!"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/users/change-password" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "currentPassword": "OldPass123!",
+    "newPassword": "NewPass123!"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Password changed successfully. Please login again with your new password."
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing currentPassword or newPassword, weak password, or password change not available for OAuth users
+- `401 Unauthorized`: Missing/invalid token or incorrect current password
+- `500 Internal Server Error`: Failed to change password
+
+**Note:** All other sessions (except the current one) are automatically deactivated for security.
+
+---
+
+### Generate 2FA Secret
+
+Generate a two-factor authentication secret and QR code for setup.
+
+**Endpoint:** `POST /api/users/2fa/generate`
+
+**Authentication:** Required
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/users/2fa/generate" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "2FA secret generated successfully",
+  "data": {
+    "secret": "JBSWY3DPEHPK3PXP",
+    "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "manualEntryKey": "JBSWY3DPEHPK3PXP"
+  }
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized`: Missing or invalid authentication token
+- `500 Internal Server Error`: Failed to generate 2FA secret
+
+**Note:** This generates a secret but doesn't enable 2FA yet. Use the verify endpoint to enable it.
+
+---
+
+### Verify and Enable 2FA
+
+Verify the TOTP token and enable two-factor authentication.
+
+**Endpoint:** `POST /api/users/2fa/verify`
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "token": "123456"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/users/2fa/verify" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "123456"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "2FA enabled successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing token, invalid token, or no 2FA secret found (generate one first)
+- `401 Unauthorized`: Missing or invalid authentication token
+- `500 Internal Server Error`: Failed to verify 2FA
+
+---
+
+### Disable 2FA
+
+Disable two-factor authentication for the account.
+
+**Endpoint:** `POST /api/users/2fa/disable`
+
+**Authentication:** Required
+
+**Request Body:** (password required for email/password accounts)
+```json
+{
+  "password": "CurrentPass123!"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/users/2fa/disable" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password": "CurrentPass123!"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "2FA disabled successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing password (for email/password accounts)
+- `401 Unauthorized`: Missing/invalid token or incorrect password
+- `500 Internal Server Error`: Failed to disable 2FA
+
+**Note:** Password confirmation is only required for email/password accounts. OAuth users can disable 2FA without password.
+
+---
+
+### Get Sessions
+
+Get all sessions for the current user with pagination (including past/expired sessions).
+
+**Endpoint:** `GET /api/users/sessions`
+
+**Authentication:** Required
+
+**Query Parameters:**
+
+| Parameter | Type    | Default | Description                    |
+|-----------|---------|---------|--------------------------------|
+| `page`    | integer | 1       | Page number (1-based).         |
+| `limit`   | integer | 10      | Items per page (max 50).       |
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/users/sessions?page=1&limit=10" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Sessions retrieved successfully",
+  "count": 5,
+  "data": [
+    {
+      "id": 1,
+      "deviceInfo": "Chrome on Mac",
+      "ipAddress": "192.168.1.100",
+      "userAgent": "Mozilla/5.0...",
+      "isActive": true,
+      "expiresAt": "2024-01-22T10:30:00.000Z",
+      "lastActivity": "2024-01-15T12:00:00.000Z",
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "isCurrentSession": true,
+      "isExpired": false
+    },
+    {
+      "id": 2,
+      "deviceInfo": "Safari on iPhone",
+      "ipAddress": "192.168.1.101",
+      "userAgent": "Mozilla/5.0...",
+      "isActive": true,
+      "expiresAt": "2024-01-22T11:00:00.000Z",
+      "lastActivity": "2024-01-15T11:45:00.000Z",
+      "createdAt": "2024-01-15T11:00:00.000Z",
+      "isCurrentSession": false,
+      "isExpired": false
+    },
+    {
+      "id": 3,
+      "deviceInfo": "Firefox on Windows",
+      "ipAddress": "192.168.1.102",
+      "userAgent": "Mozilla/5.0...",
+      "isActive": false,
+      "expiresAt": "2024-01-10T08:00:00.000Z",
+      "lastActivity": "2024-01-10T07:30:00.000Z",
+      "createdAt": "2024-01-08T10:00:00.000Z",
+      "isCurrentSession": false,
+      "isExpired": true
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 5,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPrevPage": false
+  }
+}
+```
+
+**Note:** This endpoint returns sessions for the current page (active, inactive, and expired). Use the `isActive` and `isExpired` fields to filter sessions as needed. Use `pagination` to request other pages.
+
+---
+
+### Delete Account
+
+Delete (deactivate) the user account.
+
+**Endpoint:** `DELETE /api/users/account`
+
+**Authentication:** Required
+
+**Request Body:** (password required for email/password accounts)
+```json
+{
+  "password": "CurrentPass123!"
+}
+```
+
+**Example Request:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/users/account" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password": "CurrentPass123!"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Account deleted successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing password (for email/password accounts)
+- `401 Unauthorized`: Missing/invalid token or incorrect password
+- `404 Not Found`: User not found
+- `500 Internal Server Error`: Failed to delete account
+
+**Note:** 
+- This is a soft delete (account is deactivated, not permanently deleted)
+- All active sessions are automatically deactivated
+- Password confirmation is only required for email/password accounts
+
+---
+
+### Cancel Session
+
+Cancel/delete a specific session.
+
+**Endpoint:** `DELETE /api/users/sessions/:sessionId`
+
+**Authentication:** Required
+
+**Path Parameters:**
+- `sessionId` (required): The ID of the session to cancel
+
+**Example Request:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/users/sessions/2" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Session cancelled successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid session ID
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: You can only cancel your own sessions
+- `404 Not Found`: Session not found
+- `500 Internal Server Error`: Failed to cancel session
+
+---
+
+## Password Requirements
+
+Passwords must meet the following requirements:
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character (!@#$%^&*)
+
+---
+
+## Two-Factor Authentication (2FA)
+
+Two-factor authentication adds an extra layer of security to your account by requiring a time-based one-time password (TOTP) in addition to your password when logging in.
+
+### How to Enable 2FA:
+
+1. **Generate Secret**: Call `POST /api/users/2fa/generate` to get a secret and QR code
+2. **Scan QR Code**: Use an authenticator app (Google Authenticator, Authy, etc.) to scan the QR code
+3. **Verify Token**: Enter a token from your authenticator app using `POST /api/users/2fa/verify`
+4. **2FA Enabled**: Once verified, 2FA is enabled for your account
+
+### Login with 2FA:
+
+When 2FA is enabled for your account, the login process requires an additional step:
+
+1. **Login**: Call `POST /api/auth/login` with your email and password
+2. **Check Response**: If `requires2FA: true` is in the response, 2FA verification is required
+3. **Get Verification Token**: The response includes a `verificationToken` that you'll need for the next step
+4. **Verify 2FA Code**: Call `POST /api/auth/login/verify-2fa` with the `verificationToken` and the 6-digit code from your authenticator app
+5. **Complete Login**: Upon successful verification, you'll receive your access token and can proceed with authenticated requests
+
+**Important:** The verification token from step 3 is temporary and can only be used to complete the 2FA verification. If verification fails or times out, you'll need to login again to get a new verification token.
+
+### Supported Authenticator Apps:
+- Google Authenticator
+- Authy
+- Microsoft Authenticator
+- 1Password
+- Any TOTP-compatible authenticator app
+
+### Manual Entry:
+If you can't scan the QR code, you can manually enter the secret key (`manualEntryKey`) into your authenticator app.
+
+---
+
+## Plan Restrictions
+
+All users are assigned a pricing plan that determines their resource limits. Plan restrictions are automatically enforced when creating resources. See the [Pricing Plans API](/api/23-pricing-plans) documentation for details.
+
+**Default Plan:** All new users are automatically assigned the Free plan, which includes:
+- 1 project
+- 1 environment per project
+- 3 total resources
+- 1 cloud connection
+
+If you exceed your plan limits, you'll receive a `403 Forbidden` error with details about the limit and upgrade options.
+
+---
+
+## Response Fields
+
+### User Profile Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | number | Unique user ID |
+| `email` | string | User's email address |
+| `name` | string | User's display name |
+| `profileImage` | string \| null | URL to user's profile image |
+| `authProvider` | string | Authentication provider (`email`, `google`, `github`, etc.) |
+| `emailVerified` | boolean | Whether email is verified |
+| `twoFactorEnabled` | boolean | Whether two-factor authentication is enabled |
+| `createdAt` | string | Timestamp when account was created (ISO 8601) |
+| `updatedAt` | string | Timestamp when account was last updated (ISO 8601) |
+
+### Session Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | number | Unique session ID |
+| `deviceInfo` | string | Device information (e.g., "Chrome on Mac") |
+| `ipAddress` | string \| null | IP address of the session |
+| `userAgent` | string \| null | Browser user agent string |
+| `isActive` | boolean | Whether the session is active |
+| `expiresAt` | string | Timestamp when session expires (ISO 8601) |
+| `lastActivity` | string \| null | Timestamp of last activity (ISO 8601) |
+| `createdAt` | string | Timestamp when session was created (ISO 8601) |
+| `isCurrentSession` | boolean | Whether this is the current session |
+| `isExpired` | boolean | Whether the session has expired (expiresAt < current time) |
+
+---
+
+## Security Best Practices
+
+1. **Strong Passwords**: Use complex passwords that meet all requirements
+2. **2FA**: Enable two-factor authentication for enhanced security
+3. **Session Management**: Regularly review and revoke unused sessions
+4. **Password Updates**: Change your password periodically
+5. **Account Security**: Use the logout-all endpoint if you suspect unauthorized access
+6. **Email Verification**: Verify your email address to enable account recovery features
+
+---
+
+## Error Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `400` | Bad Request - Invalid input or missing required fields |
+| `401` | Unauthorized - Invalid or missing authentication token |
+| `403` | Forbidden - Insufficient permissions |
+| `404` | Not Found - Resource does not exist |
+| `409` | Conflict - Resource already exists (e.g., email in use) |
+| `500` | Internal Server Error - Server error occurred |

@@ -1,0 +1,465 @@
+---
+title: "Public — no auth required"
+description: "HTTP API: Public — no auth required"
+---
+
+### Unified Resources Endpoints
+
+Resources are listed by project and environment (workspace/project-based API). There is no global list endpoint. Use the **resource-by-ID** endpoints for get, update, and delete instead of type-specific APIs (e.g. `/servers/:id`, `/databases/:id`).
+
+- `GET /api/resources/summary` - Get summary statistics of resources
+- `GET /api/:projectSlug/:environmentSlug/resources` - List all resources for a specific project and environment
+- `GET /api/:projectSlug/:environmentSlug/resources/:resourceId` - **Get** a resource by ID
+- `PATCH /api/:projectSlug/:environmentSlug/resources/:resourceId` - **Update** a resource (name, position)
+- `PATCH /api/:projectSlug/:environmentSlug/resources/:resourceId/position` - **Update** position only (body: `{ "x": number, "y": number }`)
+- `PUT /api/:projectSlug/:environmentSlug/resources/:resourceId/sync` - **Sync** resource data from cloud provider
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId` - **Delete** a resource
+- `GET /api/resource-types` - **List resource types** (subtype, isActive, minPlanId) — public, no auth; validate before creating resources
+
+#### Resource Types (validate before create)
+
+Resource types are stored in a `resource_types` table with columns: **subtype**, **is_active**, **min_plan_id**. Before creating any resource, the API validates that the workspace’s plan meets the minimum for that type and that the type is active.
+
+**`GET /api/resource-types`** — List all resource types. **Public** — no authentication required.
+
+**Query:**
+- `activeOnly`: `true` | `false` — default `true`, only return active types
+- `workspaceId`: number — optional; if provided and the request includes a valid Bearer token, each type includes `canCreate: boolean` for that workspace
+
+**Example:**
+```bash
+# Public — no auth required
+curl "https://api.gateways.app/api/resource-types"
+
+# With auth and workspaceId to get canCreate per type
+curl "https://api.gateways.app/api/resource-types?workspaceId=1" -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example response:**
+```json
+{
+  "message": "Resource types retrieved successfully",
+  "count": 16,
+  "data": [
+    {
+      "id": 1,
+      "subtype": "instance",
+      "displayName": "Server / EC2 Instance",
+      "isActive": true,
+      "minPlanId": 1,
+      "minPlanSlug": "free",
+      "minPlanName": "Free"
+    }
+  ]
+}
+```
+
+With `?workspaceId=1` and a valid Bearer token, each item includes `"canCreate": true|false`.
+
+**`GET /api/resource-types/:subtype`** — Get a single resource type by subtype. **Public** — no authentication required.
+
+#### List Resources
+
+List all resources for a project and environment. Use this endpoint to list resources (instances, databases, cache servers, applications, etc.) within a project.
+
+**Query Parameters:**
+- `type` (optional): Filter by resource type (`instances`, `databases`, `cache_servers`, `applications`, `terminals`, `firewalls`, `storage_buckets`, `bucket_explorers`, `db_monitors`, `static_websites`, or `all`). Default: `all`
+- `region` (optional): Filter by region
+- `status` (optional): Filter by status (for instances and databases)
+- `state` (optional): Filter by state (for resource types that expose a `state` field)
+
+**Example Requests:**
+```bash
+# Get all resources for a project and environment
+curl https://api.gateways.app/api/my-production-project/master/resources \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get only instances
+curl "https://api.gateways.app/api/my-production-project/master/resources?type=instances" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get resources filtered by region
+curl "https://api.gateways.app/api/my-production-project/staging/resources?region=us-east-1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get only running instances
+curl "https://api.gateways.app/api/my-production-project/master/resources?type=instances&status=running" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+
+For **servers** (resourceType `instance`), `metadata` is the resource table metadata as stored (e.g. instanceType, imageId, volumeType, storageSize, osType, osName, osVersion, vcpus, memoryGb, pricePerHour, publicIp, privateIp, launchTime, securityGroupId, state).
+
+**Scalable servers** (resourceType `scalable_server`) use the same metadata shape as servers (instanceType, publicIp, privateIp, imageId, launchTime, securityGroupId, state, volumeType, storageSize, osType, osName, osVersion, vcpus, memoryGb, pricePerHour) plus scalable-specific fields (minSize, maxSize, desiredCapacity, currentCapacity, instances, volumeSize, status, etc.).
+
+```json
+{
+  "message": "Project resources retrieved successfully",
+  "project": { "id": 1, "slug": "my-production-project", "name": "My Production Project" },
+  "filters": { "type": "all", "environment": "master", "region": null, "status": null, "state": null },
+  "counts": {
+    "instances": 5,
+    "databases": 2,
+    "cache_servers": 1,
+    "applications": 2,
+    "terminals": 1,
+    "firewalls": 3,
+    "storage_buckets": 2,
+    "bucket_explorers": 1,
+    "db_monitors": 1,
+    "total": 18
+  },
+  "count": 18,
+  "data": [
+    {
+      "id": 1,
+      "resourceType": "instance",
+      "resourceId": "i-1234567890abcdef0",
+      "name": "i-1234567890abcdef0",
+      "project": { "id": 1, "slug": "my-production-project", "name": "My Production Project" },
+      "environment": { "id": 2, "slug": "master", "name": "master" },
+      "region": "us-east-1",
+      "status": "running",
+      "metadata": {
+        "instanceType": "t3.micro",
+        "publicIp": "54.123.45.67",
+        "privateIp": "10.0.1.50",
+        "imageId": "ami-0c55b159cbfafe1f0",
+        "launchTime": "2024-01-15T10:00:00.000Z",
+        "volumeType": "gp3",
+        "storageSize": 8,
+        "osType": "Linux",
+        "osName": "Amazon Linux",
+        "osVersion": "2023",
+        "vcpus": 2,
+        "memoryGb": 1,
+        "pricePerHour": 0.0104
+      },
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "resourceType": "database",
+      "resourceId": "mydb-instance-1",
+      "name": "Production Database",
+      "project": { "id": 1, "slug": "my-production-project", "name": "My Production Project" },
+      "environment": { "id": 2, "slug": "master", "name": "master" },
+      "region": "us-east-1",
+      "status": "available",
+      "metadata": {
+        "type": "rds",
+        "engine": "MySQL",
+        "engineVersion": "8.0.35",
+        "endpoint": "mydb.123456789.us-east-1.rds.amazonaws.com",
+        "port": 3306,
+        "instanceClass": "db.t3.micro",
+        "allocatedStorage": 20,
+        "multiAz": false,
+        "publiclyAccessible": false
+      },
+      "createdAt": "2024-01-14T08:00:00.000Z",
+      "updatedAt": "2024-01-14T08:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "resourceType": "cache_server",
+      "resourceId": "production-cache",
+      "name": "Production Cache",
+      "project": {
+        "id": 1,
+        "slug": "my-production-project",
+        "name": "My Production Project"
+      },
+      "environment": {
+        "id": 2,
+        "slug": "staging",
+        "name": "staging"
+      },
+      "region": "us-east-1",
+      "status": "available",
+      "metadata": {
+        "cacheEngine": "valkey",
+        "engineVersion": "7.2",
+        "cacheType": "serverless",
+        "endpoint": "production-cache.abc123.cache.amazonaws.com",
+        "port": 6379
+      },
+      "position": {
+        "x": 300,
+        "y": 400
+      },
+      "createdAt": "2024-01-14T09:00:00.000Z",
+      "updatedAt": "2024-01-14T09:05:00.000Z"
+    }
+  ]
+}
+```
+
+#### Get Resource by ID
+
+Get detailed information about a resource by its database ID. Use this instead of type-specific APIs like `GET /servers/:id` or `GET /databases/:id`.
+
+**Path:** `GET /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+**Path Parameters:**
+- `projectSlug`, `environmentSlug`: Project and environment – Required
+- `resourceId`: Database ID of the resource (numeric) – Required. Get IDs from the list endpoint.
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Update Resource by ID
+
+Update a resource's name and/or position. Use `PATCH .../resources/:resourceId/position` to update canvas position only. **Note:** Name cannot be updated for `storage_bucket` or `static_website` (S3 bucket name is fixed at creation); use the type-specific PATCH endpoints for those resources.
+
+**Path:** `PATCH /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+**Body:** `{ "name"?: string, "position"?: { "x": number, "y": number } }` — at least one required.
+
+**Example:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-server", "position": { "x": 100, "y": 200 }}'
+```
+
+#### Sync Resource from Cloud Provider
+
+Sync/refresh resource data from the cloud provider (AWS, GCP, or Azure) and update the resource record in the database. This endpoint fetches the latest status, metadata, and configuration from the cloud provider and updates the resource accordingly.
+
+**Path:** `PUT /api/:projectSlug/:environmentSlug/resources/:resourceId/sync`
+
+**Supported Resource Types:**
+- `database` - Syncs AWS RDS, GCP Cloud SQL, or Azure Flexible Server
+- `instance` - Syncs AWS EC2 instances
+- `scalable_server` - Syncs AWS Auto Scaling Groups, GCP Managed Instance Groups, or Azure VM Scale Sets
+- `cache_server` - Syncs AWS ElastiCache Serverless, GCP Memorystore Redis, or Azure Cache for Redis
+- `function` - Syncs AWS Lambda, GCP Cloud Functions, or Azure Functions
+
+**Path Parameters:**
+- `projectSlug`, `environmentSlug`: Project and environment – Required
+- `resourceId`: Database ID of the resource (numeric) – Required
+
+**Example:**
+```bash
+# Sync a database
+curl -X PUT "https://api.gateways.app/api/codepanel/master/resources/2/sync" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Sync an instance
+curl -X PUT "https://api.gateways.app/api/codepanel/master/resources/1/sync" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response (Database):**
+```json
+{
+  "message": "Database synced successfully from AWS",
+  "data": {
+    "id": 2,
+    "resourceId": "mydb-instance-1",
+    "status": "available",
+    "endpoint": "mydb.123456789.us-east-1.rds.amazonaws.com",
+    "port": 3306,
+    "instanceClass": "db.t3.micro",
+    "allocatedStorage": 20,
+    "multiAz": false,
+    "publiclyAccessible": false,
+    "engine": "mysql",
+    "engineVersion": "8.0.35",
+    "awsData": {
+      "status": "available",
+      "endpoint": {
+        "address": "mydb.123456789.us-east-1.rds.amazonaws.com",
+        "port": 3306
+      },
+      "allocatedStorage": 20,
+      "instanceClass": "db.t3.micro",
+      "multiAz": false,
+      "publiclyAccessible": false,
+      "engine": "mysql",
+      "engineVersion": "8.0.35",
+      "dbInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:mydb-instance-1"
+    },
+    "syncedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+**Example Response (Instance):**
+```json
+{
+  "message": "Instance synced successfully from AWS",
+  "data": {
+    "id": 1,
+    "resourceId": "i-1234567890abcdef0",
+    "status": "running",
+    "publicIp": "54.123.45.67",
+    "privateIp": "10.0.1.50",
+    "instanceType": "t3.micro",
+    "state": "running",
+    "syncedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+**Example Response (Scalable Server):**
+```json
+{
+  "message": "Scalable server synced successfully from AWS",
+  "data": {
+    "id": 142,
+    "name": "my-scalable-server",
+    "autoScalingGroupARN": "arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:uuid:autoScalingGroupName/my-asg",
+    "minSize": 1,
+    "maxSize": 5,
+    "desiredCapacity": 2,
+    "currentCapacity": 2,
+    "instances": [
+      {
+        "instanceId": "i-1234567890abcdef0",
+        "lifecycleState": "InService",
+        "healthStatus": "Healthy",
+        "publicIp": "54.123.45.67",
+        "privateIp": "10.0.1.50"
+      }
+    ],
+    "region": "us-east-1",
+    "status": "active",
+    "synced": true,
+    "syncedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+
+**1. Resource Not Found in Cloud Provider:**
+```json
+{
+  "error": "Database not found in AWS",
+  "message": "Database mydb-instance-1 was not found in AWS. It may have been deleted.",
+  "data": {
+    "id": 2,
+    "resourceId": "mydb-instance-1",
+    "status": "deleted",
+    "synced": true
+  }
+}
+```
+
+**2. Sync Not Supported:**
+```json
+{
+  "error": "Sync not supported",
+  "message": "Resource type \"unsupported_type\" does not support syncing"
+}
+```
+
+**3. Cloud Connection Not Active:**
+```json
+{
+  "error": "Cloud connection not active",
+  "message": "The cloud connection for this project is not active or not connected"
+}
+```
+
+**Notes:**
+- The sync endpoint updates the resource's `status` and `metadata` fields with the latest information from the cloud provider
+- For databases, it syncs endpoint, port, instance class, allocated storage, engine version, and other configuration details
+- For instances, it syncs public IP, private IP, instance type, and state
+- For scalable servers, it syncs min/max size, desired capacity, current capacity, and instance details
+- For cache servers, it syncs endpoint, port, engine version, and status
+- For functions, it syncs runtime, handler, memory size, timeout, endpoint/function URL, and status
+- If a resource is not found in the cloud provider, the status is updated to `deleted`
+
+#### Delete Resource by ID
+
+**All resource deletion is performed only through this endpoint.** Do not use type-specific delete APIs (e.g. `DELETE /servers/:id`, `DELETE /databases/:id`); those have been removed.
+
+Delete a resource by its database ID. The service performs cloud deletion where applicable (terminate instance, delete RDS, remove S3 bucket, delete DNS zone, etc.), removes associated resource connections, then soft-deletes the resource. Supported types include: `instance`, `database`, `terminal`, `bucket_explorer`, `db_monitor`, `application`, `firewall`, `cache_server`, `scalable_server`, `storage_bucket`, `static_website`, `function`, `dns`, `subdomain`, and others.
+
+**Path:** `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+**Query parameters:**
+- `forceDelete` (optional): For `scalable_server` only. Set to `true` to force delete the Auto Scaling Group even if instances are still running. Default: `false`.
+- `deleteFromCloud` (optional): For `storage_bucket` and `static_website` only. Set to `false` to only remove the resource from the database (and its connections); the bucket is not deleted from the cloud. Default: `true`.
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example (scalable server, force delete):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/42?forceDelete=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example (storage bucket or static website, remove from database only):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1?deleteFromCloud=false" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Resource Summary
+
+Get summary statistics of all resources.
+
+**Example Request:**
+```bash
+curl https://api.gateways.app/api/resources/summary \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get summary for a specific project
+curl "https://api.gateways.app/api/resources/summary?projectId=1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Note:** The `/api/resources` endpoint now returns project and environment as objects with `id`, `slug`, and `name` instead of just IDs. This provides more complete information and allows you to use slugs for navigation.
+
+**Example Response:**
+```json
+{
+  "message": "Resource summary retrieved successfully",
+  "summary": {
+    "total": {
+      "instances": 5,
+      "databases": 2,
+      "loadBalancers": 1,
+      "all": 8
+    },
+    "byStatus": {
+      "instances": {
+        "running": 4,
+        "stopped": 1
+      },
+      "databases": {
+        "available": 2
+      },
+      "loadBalancers": {
+        "active": 1
+      }
+    },
+    "byRegion": {
+      "us-east-1": {
+        "instances": 3,
+        "databases": 1,
+        "loadBalancers": 1
+      },
+      "us-west-2": {
+        "instances": 2,
+        "databases": 1,
+        "loadBalancers": 0
+      }
+    }
+  }
+}
+```

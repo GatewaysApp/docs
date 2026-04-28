@@ -1,0 +1,242 @@
+---
+title: "Static Websites"
+description: "HTTP API: Static Websites"
+---
+
+# Static Websites API
+
+Static websites are S3 buckets configured for static website hosting with public access enabled. They automatically have:
+- Static website hosting enabled
+- Public access block disabled
+- Bucket policy allowing public read access
+- CORS configuration for cross-origin requests
+
+## Base URL
+
+All endpoints are prefixed with `/api/:projectSlug/:environmentSlug/static-websites`
+
+## Endpoints
+
+### Create Static Website
+
+Create a new static website (S3 bucket with static website hosting enabled).
+
+**Endpoint:** `POST /api/:projectSlug/:environmentSlug/static-websites`
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "name": "www.example.com",
+  "region": "us-east-1",
+  "positionX": 100,
+  "positionY": 150
+}
+```
+
+**Parameters:**
+- `name` (required): Static website name (used as bucket name). Any valid name — no domain format required. Validation depends on provider:
+  - **AWS:** 3–63 characters, lowercase letters, numbers, hyphens, periods. Must begin and end with letter or number.
+  - **Azure:** 3–24 characters. Letters, numbers, hyphens (hyphens are stripped for Storage Account).
+  - **GCP:** 3–63 characters, lowercase letters, numbers, hyphens, underscores, periods. Must meet GCS bucket naming rules.
+- `region` (optional): Region (defaults to connection region)
+- `positionX` (optional): Canvas X coordinate
+- `positionY` (optional): Canvas Y coordinate
+
+**Response:** `201 Created`
+```json
+{
+  "message": "Static website created successfully",
+  "data": {
+    "id": 1,
+    "name": "www.example.com",
+    "awsBucketName": "www.example.com",
+    "region": "us-east-1",
+    "websiteUrl": "http://www.example.com.s3-website-us-east-1.amazonaws.com",
+    "position": {
+      "x": 100,
+      "y": 150
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Note:** If a bucket with the same name already exists in AWS and is owned by you, it will be imported instead of creating a new one.
+
+**Error Responses:**
+- `400 Bad Request`: Invalid bucket name or missing required fields
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Access denied
+- `404 Not Found`: Project or environment not found
+- `409 Conflict`: Bucket name already exists in database
+- `500 Internal Server Error`: Server error
+
+---
+
+### List Static Websites
+
+List all static websites for a project environment.
+
+**Endpoint:** `GET /api/:projectSlug/:environmentSlug/static-websites`
+
+**Authentication:** Required
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Static websites retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "my-website",
+      "awsBucketName": "my-website",
+      "region": "us-east-1",
+      "websiteUrl": "http://my-website.s3-website-us-east-1.amazonaws.com",
+      "position": {
+        "x": 100,
+        "y": 150
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### Get Static Website Details
+
+Get details of a specific static website.
+
+**Endpoint:** `GET /api/:projectSlug/:environmentSlug/static-websites/:websiteId`
+
+**Authentication:** Required
+
+**Parameters:**
+- `websiteId` (path parameter): Static website database ID
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Static website retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "my-website",
+    "awsBucketName": "my-website",
+    "region": "us-east-1",
+    "websiteUrl": "http://my-website.s3-website-us-east-1.amazonaws.com",
+    "position": {
+      "x": 100,
+      "y": 150
+    },
+    "project": {
+      "id": 1,
+      "slug": "my-project",
+      "name": "My Project"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "Master"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid website ID
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Access denied
+- `404 Not Found`: Static website not found
+
+---
+
+### Delete Static Website
+
+**Path:** `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`  
+Use the static website’s **database ID** as `resourceId`. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id). All resource types (including static websites) are deleted via this unified path.
+
+**Query parameter:** `deleteFromCloud` (optional)
+- `true` (default): Delete the bucket from the cloud (S3/GCS/Azure), remove resource connections, then soft-delete the resource. The bucket must be empty.
+- `false`: Only remove the resource from the database (and its resource connections). The bucket is **not** deleted from the cloud.
+
+**Example (delete from cloud, default):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example (remove from database only):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1?deleteFromCloud=false" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+## Static Website Configuration
+
+When a static website is created, the following AWS S3 configurations are automatically applied:
+
+1. **Static Website Hosting:** Enabled with `index.html` as the index document and `error.html` as the error document
+2. **Public Access Block:** Disabled (all public access settings set to `false`)
+3. **Bucket Policy:** Allows public read access to all objects:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "PublicReadGetObject",
+         "Effect": "Allow",
+         "Principal": "*",
+         "Action": "s3:GetObject",
+         "Resource": "arn:aws:s3:::{bucket_name}/*"
+       }
+     ]
+   }
+   ```
+4. **CORS Configuration:** Allows GET requests from any origin:
+   ```json
+   [
+     {
+       "AllowedHeaders": ["*"],
+       "AllowedMethods": ["GET"],
+       "AllowedOrigins": ["*"],
+       "ExposeHeaders": [],
+       "MaxAgeSeconds": 3000
+     }
+   ]
+   ```
+
+## Website URL Format
+
+The static website URL follows this format:
+- **us-east-1:** `http://{bucket-name}.s3-website-us-east-1.amazonaws.com`
+- **Other regions:** `http://{bucket-name}.s3-website.{region}.amazonaws.com`
+
+## Integration with Resources API
+
+Static websites are included in the unified resources API:
+
+- **List all resources:** `GET /api/:projectSlug/:environmentSlug/resources?type=all`
+- **List static websites only:** `GET /api/:projectSlug/:environmentSlug/resources?type=static_websites`
+- **Get static website details:** `GET /api/:projectSlug/:environmentSlug/resources/static_website/:websiteId`
+
+## Resource Connections
+
+Static websites can be connected to other resources using the resource connections API:
+
+- **Create connection:** `POST /api/:projectSlug/:environmentSlug/resource-connections`
+- **List connections:** `GET /api/:projectSlug/:environmentSlug/resource-connections`
+
+Example: Connect a static website to an application resource.
+
+
+
+
+

@@ -1,0 +1,20 @@
+---
+title: Gateways vs Fly.io
+description: Multi-cloud resource design vs Fly.io’s global app platform.
+---
+
+# Gateways vs Fly.io
+
+**Fly.io** runs **your containers and machines** close to users on Fly’s network, with a strong story for **global apps** and low-latency placement.
+
+**Gateways** does not replace a container scheduler; it **orchestrates the cloud primitives you already use** (instances, scaling groups, databases, DNS, functions) across **AWS, Azure, and GCP** with a **canvas and API**.
+
+| Topic | Gateways | Fly.io |
+| --- | --- | --- |
+| **Unit of work** | Cloud resources & connections in *your* accounts | Fly Machines, volumes, regions on Fly |
+| **Cloud breadth** | AWS + Azure + GCP in one product map | Fly platform + optional integrations |
+| **Ideal user** | Platform teams standardizing on hyperscalers | Teams optimizing global process/container placement |
+
+Use **Fly.io** when Fly’s **runtime and network** match your app model. Use **Gateways** when the **source of truth** is your **enterprise cloud footprint** and you need **one map** for people and automation.
+
+[Compare hub](/platform) · [Resource types](/gateways/resources)

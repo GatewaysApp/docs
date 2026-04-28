@@ -1,0 +1,60 @@
+---
+title: Utilities
+description: Terminal, bucket explorer, IDE, DB monitoring, subdomain, and generic utility resources.
+---
+
+Opened from **Utility** in Create. Each subtype has its own **API subtype** and, where applicable, a **configuration panel**.
+
+## Terminal
+
+| | |
+| --- | --- |
+| **Purpose** | **Browser-based shell** attached to eligible compute (for example a **server** or **instance**). |
+| **API subtype** | `terminal`. |
+| **Notes** | Requires a **valid target**; sessions are **scoped to the current project and environment**. The WebSocket terminal service may run separately from the main API (see deployment docs). |
+
+## Storage bucket explorer
+
+| | |
+| --- | --- |
+| **Purpose** | **Browse and manage objects** inside **object storage** (list, upload, delete depending on permissions). |
+| **Create menu** | “Explore and manage storage buckets.” |
+| **API subtype** | `bucket_explorer`. |
+| **Notes** | Usually bound to an existing **[storage bucket](/gateways/resources/storage-bucket)** or account scope defined when creating the utility. |
+
+## IDE
+
+| | |
+| --- | --- |
+| **Purpose** | **Remote IDE** session for editing and running code in the cloud where the deployment enables it. |
+| **API subtype** | `ide`. |
+| **Notes** | May require underlying compute or a managed IDE service; IDE WebSocket traffic may use a dedicated service. |
+
+## DB monitoring
+
+| | |
+| --- | --- |
+| **Purpose** | **Metrics and health** views for database workloads (performance monitoring). |
+| **API subtype** | `db_monitor` (may appear as **DB Monitoring** on cards). |
+| **Notes** | Complements **[Database](/gateways/resources/database)** resources—create monitoring alongside the DB you observe. |
+
+## Subdomain
+
+| | |
+| --- | --- |
+| **Purpose** | **DNS subdomain** or routing resource (for example `api.example.com` or a wildcard pattern where supported). |
+| **API subtype** | `subdomain`. |
+| **Panel** | **`SubdomainConfigurationPanel`** — **name** (label rules; `*` may be allowed for wildcard-style entries per validation) and optional **description**. |
+| **Notes** | Often used with **[DNS](/gateways/resources/dns)** zones and application or edge frontends when your deployment supports them. |
+
+## Utility (generic)
+
+| | |
+| --- | --- |
+| **Purpose** | **Catch-all** or **platform-specific** helper resources not covered by a dedicated type. |
+| **API subtype** | `utility`. |
+| **Notes** | Behavior is deployment-defined. |
+
+**API:** [API documentation](/api/index) → **Resources**, **Resource connections**.
+
+[← Resource types hub](/gateways/resources)

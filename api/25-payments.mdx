@@ -1,0 +1,867 @@
+---
+title: "Payments"
+description: "HTTP API: Payments"
+---
+
+# Payments API
+
+The Payments API provides endpoints for managing payment methods and workspace plan upgrades/downgrades using Stripe integration.
+
+## Base Endpoint
+
+```
+/api/payments
+```
+
+## Authentication
+
+All payment endpoints require authentication. Include your JWT token in the Authorization header:
+
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+## Required Configuration
+
+Add your Stripe secret key to your `.env` file:
+
+```env
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
+```
+
+For production, use your live Stripe secret key (starts with `sk_live_`).
+
+## Payment Method Management
+
+### Create Payment Method Setup
+
+Initialize a payment method setup to collect card information for a workspace. Only workspace owners and admins can manage payment methods.
+
+**Endpoint:** `POST /api/payments/:workspaceSlug/payment-method`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Response:**
+```json
+{
+  "message": "Payment method setup initialized",
+  "data": {
+    "clientSecret": "seti_xxxxxxxxxxxxx_secret_xxxxxxxxxxxxx",
+    "setupIntentId": "seti_xxxxxxxxxxxxx"
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/payments/johns-workspace/payment-method \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+**Frontend Integration:**
+
+Use Stripe.js to collect payment method:
+
+```javascript
+// 1. Get clientSecret from the API
+const workspaceSlug = 'johns-workspace';
+const response = await fetch(`/api/payments/${workspaceSlug}/payment-method`, {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+const { data } = await response.json();
+
+// 2. Use Stripe.js to confirm setup (include billing name and postal code for Stripe)
+const stripe = Stripe('pk_test_your_publishable_key');
+const { setupIntent, error } = await stripe.confirmCardSetup(
+  data.clientSecret,
+  {
+    payment_method: {
+      card: cardElement,
+      billing_details: {
+        name: 'User Name',
+        address: { postal_code: '94102' },
+      },
+    },
+  }
+);
+
+if (setupIntent) {
+  // 3. Confirm the payment method
+  await fetch(`/api/payments/${workspaceSlug}/payment-method/confirm`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      setupIntentId: setupIntent.id,
+      paymentMethodId: setupIntent.payment_method,
+      billingName: 'User Name',
+      billingPostalCode: '94102'
+    })
+  });
+}
+```
+
+---
+
+### Confirm Payment Method
+
+Confirm and save a payment method for a workspace after SetupIntent completion. Only workspace owners and admins can manage payment methods.
+
+**Endpoint:** `POST /api/payments/:workspaceSlug/payment-method/confirm`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| setupIntentId | string | Yes | Stripe SetupIntent ID from setup |
+| paymentMethodId | string | Yes | Stripe PaymentMethod ID from `setupIntent.payment_method` |
+| billingName | string | No | Cardholder / billing name (sent to Stripe and stored) |
+| billingPostalCode | string | No | Billing ZIP / postal code (sent to Stripe and stored) |
+
+```json
+{
+  "setupIntentId": "seti_xxxxxxxxxxxxx",
+  "paymentMethodId": "pm_xxxxxxxxxxxxx",
+  "billingName": "Jane Doe",
+  "billingPostalCode": "94102"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Payment method confirmed and saved",
+  "data": {
+    "paymentMethodId": "pm_xxxxxxxxxxxxx",
+    "setupIntentId": "seti_xxxxxxxxxxxxx",
+    "workspaceId": 1,
+    "workspaceSlug": "johns-workspace"
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/payments/johns-workspace/payment-method/confirm \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "setupIntentId": "seti_xxxxxxxxxxxxx",
+    "paymentMethodId": "pm_xxxxxxxxxxxxx"
+  }'
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Missing fields, invalid workspace slug, or setup incomplete
+- `404 Not Found` - Workspace does not exist
+- `403 Forbidden` - User is not an owner or admin
+- `401 Unauthorized` - Missing or invalid token
+- `500 Internal Server Error` - Stripe configuration error or confirmation failed
+
+---
+
+### List Payment Methods
+
+Get all payment methods for a workspace.
+
+**Endpoint:** `GET /api/payments/:workspaceSlug/payment-methods`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Query Parameters:**
+- `include_inactive` (optional) - Include inactive payment methods (`true`/`false`, default: `false`)
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Payment methods retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "workspaceId": 1,
+      "stripePaymentMethodId": "pm_123abc",
+      "stripeCustomerId": "cus_123abc",
+      "type": "card",
+      "cardBrand": "Visa",
+      "cardLast4": "4242",
+      "cardExpMonth": 12,
+      "cardExpYear": 2025,
+      "isDefault": true,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -X GET "https://api.gateways.app/api/payments/johns-workspace/payment-methods" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+- `401 Unauthorized` - User ID not found
+- `400 Bad Request` - Invalid workspace slug
+- `404 Not Found` - Workspace does not exist
+- `403 Forbidden` - User does not have access to this workspace
+
+---
+
+### Set Default Payment Method
+
+Set a payment method as the default for a workspace. Only workspace owners and admins can manage payment methods.
+
+**Endpoint:** `PATCH /api/payments/:workspaceSlug/payment-methods/:paymentMethodId/set-default`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+- `paymentMethodId` (path) - The ID of the payment method (database ID)
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:** (Empty)
+
+**Response:**
+```json
+{
+  "message": "Default payment method set successfully",
+  "data": {
+    "id": 1,
+    "workspaceId": 1,
+    "stripePaymentMethodId": "pm_123abc",
+    "stripeCustomerId": "cus_123abc",
+    "type": "card",
+    "cardBrand": "Visa",
+    "cardLast4": "4242",
+    "cardExpMonth": 12,
+    "cardExpYear": 2025,
+    "isDefault": true,
+    "isActive": true,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T11:00:00.000Z"
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/payments/johns-workspace/payment-methods/1/set-default" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+**Error Responses:**
+- `401 Unauthorized` - User ID not found
+- `400 Bad Request` - Invalid workspace slug or payment method ID
+- `404 Not Found` - Workspace or payment method does not exist
+- `403 Forbidden` - User is not an owner/admin or payment method doesn't belong to workspace
+
+---
+
+### Delete Payment Method
+
+Delete a payment method (soft delete). If it's the default payment method, the next available payment method will be set as default. Only workspace owners and admins can manage payment methods.
+
+**Endpoint:** `DELETE /api/payments/:workspaceSlug/payment-methods/:paymentMethodId`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+- `paymentMethodId` (path) - The ID of the payment method (database ID)
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+**Response:**
+```json
+{
+  "message": "Payment method deleted successfully",
+  "data": {
+    "id": 1,
+    "deleted": true
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/payments/johns-workspace/payment-methods/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+- `401 Unauthorized` - User ID not found
+- `400 Bad Request` - Invalid workspace slug or payment method ID
+- `404 Not Found` - Workspace or payment method does not exist
+- `403 Forbidden` - User is not an owner/admin or payment method doesn't belong to workspace
+
+---
+
+## Workspace Plan Management
+
+### Upgrade Workspace Plan
+
+Upgrade a workspace to a higher-tier plan. This will immediately charge the payment method for the prorated amount and update the workspace plan.
+
+**Endpoint:** `POST /api/payments/workspace/:workspaceSlug/upgrade-plan`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "planSlug": "starter",  // Required - Slug of the target plan (e.g., "starter", "pro", "enterprise")
+  "paymentMethodId": 1  // Optional - Payment method ID (database ID or Stripe pm_xxx). If not provided, uses default payment method.
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Plan upgraded successfully",
+  "data": {
+    "workspace": {
+      "id": 1,
+      "name": "John's Workspace",
+      "slug": "johns-workspace",
+      "planId": 2,
+      "isActive": true,
+      ...
+    },
+    "paymentIntent": {
+      "id": "pi_xxxxxxxxxxxxx",
+      "amount": 999,
+      "currency": "usd",
+      "status": "succeeded"
+    }
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/payments/workspace/johns-workspace/upgrade-plan \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "planSlug": "starter",
+    "paymentMethodId": "pm_xxxxxxxxxxxxx"
+  }'
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Missing fields, invalid plan, invalid payment method, or not an upgrade (target plan must be higher than current plan)
+- `400 Bad Request` - No payment method provided and no default payment method found
+- `401 Unauthorized` - Missing or invalid token
+- `403 Forbidden` - User is not an owner or admin of the workspace
+- `404 Not Found` - Workspace or plan not found
+- `500 Internal Server Error` - Payment processing error or Stripe configuration error
+
+**Notes:**
+- Only workspace owners and admins can upgrade plans
+- Target plan must be a higher tier than the current plan (use downgrade endpoint for downgrades)
+- Payment is charged immediately for the full month (prorated billing can be implemented)
+- Payment method is automatically attached to a Stripe customer for the workspace
+- Workspace plan is updated immediately upon successful payment
+
+---
+
+### Downgrade Workspace Plan
+
+Downgrade a workspace to a lower-tier plan. This is immediate and no refund is issued for the current billing period.
+
+**Endpoint:** `POST /api/payments/workspace/:workspaceSlug/downgrade-plan`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Headers:**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "planSlug": "free"  // Required - Slug of the target plan (must be lower tier)
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Plan downgraded successfully",
+  "data": {
+    "workspace": {
+      "id": 1,
+      "name": "John's Workspace",
+      "slug": "johns-workspace",
+      "planId": 1,
+      "isActive": true,
+      ...
+    },
+    "note": "Downgrade takes effect immediately. No refund will be issued for the current billing period."
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/payments/workspace/johns-workspace/downgrade-plan \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "planSlug": "free"
+  }'
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Missing planSlug or not a downgrade (target plan must be lower than current plan)
+- `401 Unauthorized` - Missing or invalid token
+- `403 Forbidden` - User is not an owner or admin of the workspace
+- `404 Not Found` - Workspace or plan not found
+- `500 Internal Server Error` - Update error
+
+**Notes:**
+- Only workspace owners and admins can downgrade plans
+- Target plan must be a lower tier than the current plan (use upgrade endpoint for upgrades)
+- Downgrade takes effect immediately
+- No refund is issued for the current billing period
+- No payment method is required for downgrades
+
+---
+
+## Complete Workflow Example
+
+### Upgrade Workspace Plan
+
+```bash
+# Step 1: Initialize payment method setup
+curl -X POST https://api.gateways.app/api/payments/payment-method \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Response: { "data": { "clientSecret": "seti_xxx..." } }
+
+# Step 2: Use Stripe.js on frontend to collect card and confirm setup
+# (See frontend integration example above)
+
+# Step 3: Confirm payment method
+curl -X POST https://api.gateways.app/api/payments/payment-method/confirm \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "setupIntentId": "seti_xxxxxxxxxxxxx",
+    "paymentMethodId": "pm_xxxxxxxxxxxxx"
+  }'
+
+# Step 4: Upgrade workspace plan
+curl -X POST https://api.gateways.app/api/payments/workspace/johns-workspace/upgrade-plan \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "planSlug": "starter",
+    "paymentMethodId": "pm_xxxxxxxxxxxxx"
+  }'
+```
+
+### Downgrade Workspace Plan
+
+```bash
+# Downgrade (simpler - no payment required)
+curl -X POST https://api.gateways.app/api/payments/workspace/johns-workspace/downgrade-plan \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "planSlug": "free"
+  }'
+```
+
+---
+
+## Invoice Management
+
+### List Invoices
+
+Get all invoices for a workspace with pagination. Invoices are automatically created when plans are upgraded. Only workspace members can view invoices.
+
+**Endpoint:** `GET /api/payments/:workspaceSlug/invoices`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+
+**Query Parameters:**
+- `include_all` (optional): Include refunded invoices. Set to `"true"` to include all invoices including refunded ones. Default: `false`
+- `page` (optional): Page number for pagination. Default: `1`, minimum: `1`
+- `limit` (optional): Number of invoices per page. Default: `20`, maximum: `100`, minimum: `1`
+
+**Example Request:**
+```bash
+# Get first page (default 20 invoices)
+curl "https://api.gateways.app/api/payments/johns-workspace/invoices" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get second page with 10 invoices per page
+curl "https://api.gateways.app/api/payments/johns-workspace/invoices?page=2&limit=10" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get all invoices including refunded ones
+curl "https://api.gateways.app/api/payments/johns-workspace/invoices?include_all=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Invoices retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "workspaceId": 1,
+      "stripePaymentIntentId": "pi_xxxxxxxxxxxxx",
+      "stripeInvoiceId": null,
+      "invoiceNumber": "INV-20240115-0001",
+      "type": "plan_upgrade",
+      "status": "paid",
+      "amount": 9.99,
+      "currency": "usd",
+      "planId": 2,
+      "previousPlanId": 1,
+      "paymentMethodId": 1,
+      "description": "Upgrade workspace \"John's Workspace\" from Free to Starter plan",
+      "billingPeriodStart": null,
+      "billingPeriodEnd": null,
+      "paidAt": "2024-01-15T10:30:00.000Z",
+      "refundedAmount": 0,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z",
+      "planName": "Starter",
+      "planSlug": "starter",
+      "previousPlanName": "Free",
+      "previousPlanSlug": "free",
+      "cardBrand": "visa",
+      "cardLast4": "4242"
+    },
+    {
+      "id": 2,
+      "workspaceId": 1,
+      "stripePaymentIntentId": null,
+      "stripeInvoiceId": null,
+      "invoiceNumber": "INV-20240120-0001",
+      "type": "plan_downgrade",
+      "status": "paid",
+      "amount": 0.00,
+      "currency": "usd",
+      "planId": 1,
+      "previousPlanId": 2,
+      "paymentMethodId": null,
+      "description": "Downgrade workspace \"John's Workspace\" from Starter to Free plan",
+      "billingPeriodStart": null,
+      "billingPeriodEnd": null,
+      "paidAt": "2024-01-20T14:15:00.000Z",
+      "refundedAmount": 0,
+      "createdAt": "2024-01-20T14:15:00.000Z",
+      "updatedAt": "2024-01-20T14:15:00.000Z",
+      "planName": "Free",
+      "planSlug": "free",
+      "previousPlanName": "Starter",
+      "previousPlanSlug": "starter",
+      "cardBrand": null,
+      "cardLast4": null
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 2,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPrevPage": false
+  }
+}
+```
+
+**Invoice object fields (refunds):**
+- `refundedAmount` (number): Total amount refunded for this invoice (0 if none; updated when admin issues full or partial refunds). When this equals `amount`, `status` is typically `refunded`.
+
+**Pagination Response Fields:**
+- `page` (number): Current page number
+- `limit` (number): Number of items per page
+- `total` (number): Total number of invoices matching the query
+- `totalPages` (number): Total number of pages
+- `hasNextPage` (boolean): Whether there is a next page
+- `hasPrevPage` (boolean): Whether there is a previous page
+
+---
+
+### Get Invoice by ID
+
+Get details of a specific invoice.
+
+**Endpoint:** `GET /api/payments/:workspaceSlug/invoices/:invoiceId`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+- `invoiceId` (path) - The ID of the invoice
+
+**Response:**
+```json
+{
+  "message": "Invoice retrieved successfully",
+  "data": {
+    "id": 1,
+    "workspaceId": 1,
+    "stripePaymentIntentId": "pi_xxxxxxxxxxxxx",
+    "stripeInvoiceId": null,
+    "invoiceNumber": "INV-20240115-0001",
+    "type": "plan_upgrade",
+    "status": "paid",
+    "amount": 9.99,
+    "currency": "usd",
+    "planId": 2,
+    "previousPlanId": 1,
+    "paymentMethodId": 1,
+    "description": "Upgrade workspace \"John's Workspace\" from Free to Starter plan",
+    "billingPeriodStart": null,
+    "billingPeriodEnd": null,
+    "paidAt": "2024-01-15T10:30:00.000Z",
+    "refundedAmount": 0,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z",
+    "planName": "Starter",
+    "planSlug": "starter",
+    "previousPlanName": "Free",
+    "previousPlanSlug": "free",
+    "cardBrand": "visa",
+    "cardLast4": "4242"
+  }
+}
+```
+
+**Invoice Types:**
+- `plan_upgrade` - Workspace plan was upgraded (charged immediately)
+- `plan_downgrade` - Workspace plan was downgraded (no charge, logged for records)
+
+**Invoice Status:**
+- `pending` - Payment is pending
+- `paid` - Payment completed successfully
+- `failed` - Payment failed
+- `refunded` - Payment was refunded
+
+**Invoice Number Format:**
+Invoices are numbered with the format `INV-YYYYMMDD-XXXX` (e.g., `INV-20240115-0001`), where:
+- `YYYYMMDD` is the date the invoice was created
+- `XXXX` is a sequential number starting from 0001 for each day
+
+---
+
+### Download Invoice (PDF)
+
+Generate an invoice as a PDF, store it in S3, and return a presigned URL for download.
+
+**Endpoint:** `GET /api/payments/:workspaceSlug/invoices/:invoiceId/download`
+
+**Parameters:**
+- `workspaceSlug` (path) - The slug of the workspace
+- `invoiceId` (path) - The ID of the invoice
+
+**Response:**
+```json
+{
+  "message": "Invoice download ready",
+  "data": {
+    "downloadUrl": "https://...",
+    "expiresIn": 3600,
+    "fileName": "INV-20240115-0001.pdf"
+  }
+}
+```
+
+- `downloadUrl`: Presigned S3 URL to download the PDF (valid for 1 hour).
+- `expiresIn`: URL validity in seconds.
+- `fileName`: Suggested filename for the invoice PDF.
+
+**Notes:**
+- The PDF is generated on each request and uploaded to the app's S3 bucket under `invoices/{workspaceId}/{invoiceNumber}.pdf`.
+- The PDF includes refund data when applicable: status (e.g. "Refunded" or "Paid (Refunded $X.XX)"), a "Refunded" row in invoice details, and in the amount section the original amount, refunded amount, and amount due.
+- The "Bill to" section shows the workspace name and, when set, the workspace billing address (line1, line2, city, state, postal code, country). Configure billing address in account settings → Workspace.
+- Requires `INVOICE_STORAGE_BUCKET` or `PROFILE_STORAGE_BUCKET` and AWS credentials to be configured.
+- Optional: set `INVOICE_STORAGE_PUBLIC_URL` (e.g. `https://gateways-invoices.s3.us-east-1.amazonaws.com`) when the bucket allows public GetObject. The app will then return direct public URLs instead of presigned URLs and will not require IAM GetObject/HeadObject for reads (403 on HeadObject is treated as “use public URL”).
+- Returns `503` if invoice storage is not configured.
+
+---
+
+## Error Codes
+
+| Status Code | Description |
+|------------|-------------|
+| 200 | Success |
+| 400 | Bad Request (missing fields, invalid data, wrong plan tier) |
+| 401 | Unauthorized (missing or invalid token) |
+| 403 | Forbidden (insufficient permissions) |
+| 404 | Not Found (workspace or plan not found) |
+| 500 | Internal Server Error (Stripe error, configuration error, or processing error) |
+| 503 | Service Unavailable (invoice download storage not configured) |
+
+---
+
+## Stripe Integration Notes
+
+### Customer Management
+
+- A Stripe customer is automatically created for each workspace on first upgrade
+- The customer email is set to `workspace-{workspaceId}@gateways.app`
+- Payment methods are attached to the customer and set as default for future charges
+
+### Payment Processing
+
+- Upgrades charge immediately for the full month (prorated billing can be added)
+- Payment methods are stored securely in Stripe
+- Failed payments return detailed error messages
+
+### Security
+
+- All payment processing happens server-side via Stripe API
+- Payment method details are never stored directly in the database
+- Only payment method IDs are referenced
+- Stripe handles PCI compliance for card data
+
+---
+
+## Frontend Integration Guide
+
+### Using Stripe Elements
+
+1. **Include Stripe.js:**
+```html
+<script src="https://js.stripe.com/v3/"></script>
+```
+
+2. **Initialize Stripe:**
+```javascript
+const stripe = Stripe('pk_test_your_publishable_key');
+```
+
+3. **Create Setup Intent:**
+```javascript
+const response = await fetch('/api/payments/payment-method', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const { data } = await response.json();
+```
+
+4. **Collect Payment Method:**
+```javascript
+const elements = stripe.elements();
+const cardElement = elements.create('card');
+cardElement.mount('#card-element');
+
+const { setupIntent, error } = await stripe.confirmCardSetup(
+  data.clientSecret,
+  {
+    payment_method: {
+      card: cardElement,
+      billing_details: { name: 'User Name' }
+    }
+  }
+);
+```
+
+5. **Confirm and Upgrade:**
+```javascript
+// Confirm payment method
+await fetch('/api/payments/payment-method/confirm', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    setupIntentId: setupIntent.id,
+    paymentMethodId: setupIntent.payment_method
+  })
+});
+
+// Upgrade plan
+await fetch(`/api/payments/workspace/${workspaceSlug}/upgrade-plan`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    planSlug: 'starter',
+    paymentMethodId: setupIntent.payment_method
+  })
+});
+```
+
+---
+
+## Testing
+
+Use Stripe test cards for testing:
+
+- **Success:** `4242 4242 4242 4242`
+- **Decline:** `4000 0000 0000 0002`
+- **Requires Authentication:** `4000 0025 0000 3155`
+
+Use any future expiry date, any 3-digit CVC, and any postal code.
+
+---
+
+## Support
+
+For Stripe-related issues:
+- Stripe Dashboard: https://dashboard.stripe.com
+- Stripe Docs: https://stripe.com/docs
+- Stripe Support: https://support.stripe.com
+
+For API-related issues, refer to the main API documentation or contact support.
+

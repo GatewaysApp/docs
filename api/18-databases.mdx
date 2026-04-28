@@ -1,0 +1,853 @@
+---
+title: "Sync database data from cloud provider and update database"
+description: "HTTP API: Sync database data from cloud provider and update database"
+---
+
+### Database Endpoints
+
+GatewaysApp supports managed relational databases on **AWS RDS** and **GCP Cloud SQL**. The create endpoint uses the project's connected cloud (AWS or GCP). AWS: MySQL, PostgreSQL, MariaDB with DB subnet group and security group. GCP: MySQL and PostgreSQL only (no MariaDB); Cloud SQL with automatic configuration.
+
+#### Create Database
+- `POST /api/:projectSlug/:environmentSlug/databases` - Create a new database (AWS RDS or GCP Cloud SQL)
+
+**Description:** Creates a database instance. **AWS RDS** (project connected to AWS): automatic DB subnet group, default security group, MySQL/PostgreSQL/MariaDB, instance class (e.g. db.t3.micro), storage, Multi-AZ, publiclyAccessible. **GCP Cloud SQL** (project connected to GCP): MySQL or PostgreSQL only (no MariaDB); use GCP region (e.g. us-central1), `instanceClass` as Cloud SQL tier (e.g. db-f1-micro, db-g1-small) or AWS-like (db.t3.micro → db-f1-micro); `database-versions` (with environmentSlug) and `database-instance-types` use the project's connected cloud (use `provider=gcp` or rely on project’s connected cloud).
+
+**GCP private IP (default):** When `publiclyAccessible` is `false` (the default), Cloud SQL is created with **private IP only** on the `default` VPC (`ipv4Enabled: false`, `privateNetwork` set). Instances, scalable servers, and functions (with VPC connector) connect over the private network without public authorized-network rules. Set `publiclyAccessible: true` only if you need a **public** IPv4 address (and broad authorized network for dev). Private IP requires a working **Service Networking / private services access** connection for the VPC; if create fails, enable the Service Networking API and ensure the VPC can allocate a peering range (see GCP “Private IP” docs).
+
+**Request Body:**
+```json
+{
+  "name": "my-database",
+  "engine": "mysql",                    // Required: "mysql", "postgres", or "mariadb"
+  "engineVersion": "8.0",               // Optional: Engine version (e.g., "8.0", "13.7")
+  "instanceClass": "db.t3.micro",       // Required: RDS instance class (e.g., db.t3.micro, db.t3.small)
+  "allocatedStorage": 20,               // Required: Storage in GB (minimum depends on storage type: gp2/gp3 = 20GB, io1/io2 = 100GB)
+  "masterUsername": "admin",            // Required: Master database username
+  "masterUserPassword": "SecurePass123!", // Required: Master database password (minimum 8 characters)
+  "region": "us-east-1",                // Required: AWS region code (e.g., us-east-1, eu-west-1, ap-south-1)
+  "storageType": "gp3",                 // Optional: Storage type (gp2, gp3, io1, io2 for AWS RDS). Default: gp3
+  "multiAz": false,                     // Optional: Enable Multi-AZ deployment (default: false)
+  "publiclyAccessible": false,          // Optional: Make database publicly accessible (default: false)
+  "positionX": 100,                     // Optional: Canvas X coordinate
+  "positionY": 200                      // Optional: Canvas Y coordinate
+}
+```
+
+**Database Naming:**
+- DB instance identifier will be sanitized to meet AWS requirements (1-63 characters, alphanumeric and hyphens only)
+- The name you provide will be used directly as the AWS RDS instance identifier
+- Automatically converted to lowercase
+- Invalid characters replaced with hyphens
+- Must contain at least one alphanumeric character
+
+**Supported Engines:**
+- `mysql` - MySQL (default port: 3306)
+- `postgres` - PostgreSQL (default port: 5432)
+- `mariadb` - MariaDB (default port: 3306)
+
+**Querying Available Options:**
+Before creating a database, you can query available options using the Cloud Infrastructure APIs:
+
+1. **Get Available Database Types:**
+   ```bash
+   GET /api/cloud/:projectSlug/database-types
+   ```
+   Returns all supported database engine types (MySQL, PostgreSQL, MariaDB, etc.). Requires auth.
+
+2. **Get Available Engine Versions:**
+   ```bash
+   GET /api/cloud/:projectSlug/:environmentSlug/database-versions?engine=mysql&region=us-east-1
+   GET /api/cloud/:projectSlug/:environmentSlug/database-versions?engine=mysql
+   ```
+   Returns available engine versions. Use `provider=aws` for RDS (optionally `region`); use `provider=gcp` for Cloud SQL (`engine` filter; `metadata.gcpDatabaseVersion` e.g. MYSQL_8_0, POSTGRES_15). Requires auth.
+
+3. **Get Available Instance Types:**
+   ```bash
+   GET /api/cloud/:projectSlug/database-instance-types?provider=aws&region=us-east-1&family=db.t3
+   GET /api/cloud/:projectSlug/database-instance-types?provider=gcp&family=db-n1-standard
+   ```
+   Returns RDS instance types (AWS) or Cloud SQL tiers (GCP: db-f1-micro, db-n1-standard-*, etc.). Provider can be inferred from the project’s connected cloud. Requires auth.
+
+4. **Get Available Volume Types:**
+   ```bash
+   GET /api/cloud/:projectSlug/volume-types?region=us-east-1&resource_type=db
+   ```
+   Returns available RDS volume types (gp2, gp3, io1, io2) with pricing and storage limits. Provider is inferred from the project's cloud connection. Requires auth.
+
+See [Cloud Infrastructure API Documentation](/api/12-cloud-infrastructure) for detailed information about these endpoints.
+
+**Storage Type:**
+- **storageType** (optional): Storage type for the database
+  - **AWS RDS:** `gp2`, `gp3`, `io1`, `io2` (default: `gp3`)
+    - `gp2`/`gp3` (General Purpose SSD): Minimum 20 GB
+    - `io1`/`io2` (Provisioned IOPS SSD): Minimum 100 GB
+  - **GCP Cloud SQL:** Uses default storage type (not configurable via API)
+  - **Azure:** Uses default storage type (not configurable via API)
+- If not provided, defaults to `gp3` for AWS RDS
+- To check available volume types and pricing for your region, use: `GET /api/cloud/:projectSlug/volume-types?region=us-east-1&resource_type=rds` (auth required; provider from project connection)
+
+**Important Notes:**
+- **Security:** Username and password are encrypted and stored securely in the `secret_data` column. They are never returned in API responses.
+- **Metadata Fields:** The following fields are automatically stored in the `metadata` column:
+  - `volumeType`: Storage type (e.g., gp2, gp3, io1, io2 for AWS RDS) - looked up from database instance types
+  - `storageSize`: Allocated storage in GB (same as `allocatedStorage`)
+  - `vcpus`: Number of vCPUs - looked up from database instance types table
+  - `memoryGb`: Memory in GB - looked up from database instance types table
+  - `pricePerHour`: Estimated hourly price - looked up from database instance type pricing table
+- RDS instances can take several minutes to create and become available
+- The API returns immediately with status "creating"
+- Use the sync endpoint or AWS Console to check creation progress
+- Requires subnets in at least 2 availability zones (automatically handled via default VPC)
+- DB subnet groups are automatically created and reused per project/environment
+
+**Example (MySQL Database):**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/databases" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "production-db",
+    "engine": "mysql",
+    "engineVersion": "8.0",
+    "instanceClass": "db.t3.micro",
+    "allocatedStorage": 20,
+    "masterUsername": "admin",
+    "masterUserPassword": "SecurePassword123!",
+    "region": "us-east-1",
+    "storageType": "gp3",
+    "multiAz": false,
+    "publiclyAccessible": false,
+    "positionX": 300,
+    "positionY": 400
+  }'
+```
+
+**Example (PostgreSQL Database):**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/databases" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "app-database",
+    "engine": "postgres",
+    "engineVersion": "13.7",
+    "instanceClass": "db.t3.small",
+    "allocatedStorage": 100,
+    "masterUsername": "postgres",
+    "masterUserPassword": "MySecurePassword123!",
+    "region": "eu-west-1",
+    "storageType": "gp3",
+    "multiAz": true,
+    "publiclyAccessible": false,
+    "positionX": 500,
+    "positionY": 500
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Database created successfully",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "projectId": 1,
+    "environmentId": 1,
+    "resourceId": "production-db-codepanel-master",
+    "resourceType": "rds",
+    "name": "production-db",
+    "engine": "mysql",
+    "engineVersion": "8.0",
+    "region": "us-east-1",
+    "status": "creating",
+    "endpoint": null,
+    "port": 3306,
+    "allocatedStorage": 20,
+    "instanceClass": "db.t3.micro",
+    "multiAz": false,
+    "publiclyAccessible": false,
+    "positionX": 300,
+    "positionY": 400,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z",
+    "deletedAt": null
+  }
+}
+```
+
+**Note:** The `endpoint` field will be `null` initially and will be populated once the database instance is available. Use the describe endpoint or AWS Console to check when the endpoint becomes available.
+
+**Error Response (No cloud connection):**
+```json
+{
+  "error": "No cloud connection",
+  "message": "Project does not have a cloud connection. Please connect a cloud provider first."
+}
+```
+
+**Error Response (Invalid engine):**
+```json
+{
+  "error": "Invalid engine",
+  "message": "engine must be one of: mysql, postgres, mariadb"
+}
+```
+
+**Error Response (Insufficient subnets):**
+```json
+{
+  "error": "Insufficient subnets",
+  "message": "RDS requires subnets in at least 2 availability zones. Please ensure your VPC has subnets in multiple availability zones."
+}
+```
+
+**Error Response (Insufficient permissions):**
+```json
+{
+  "error": "Insufficient permissions",
+  "message": "Your AWS IAM role does not have the required permissions to create RDS databases.",
+  "details": "User: arn:aws:sts::... is not authorized to perform: rds:CreateDBInstance...",
+  "suggestion": "Please update your CloudFormation stack to include the latest RDS permissions. The CloudFormation template has been updated with the required permissions. You need to update your stack in AWS Console or redeploy it with the latest template."
+}
+```
+
+**Error Response (Subnet group error):**
+```json
+{
+  "error": "Subnet group error",
+  "message": "Failed to create database subnet group. Please ensure your VPC has subnets in at least 2 availability zones.",
+  "details": "..."
+}
+```
+
+#### List Databases
+- `GET /api/:projectSlug/:environmentSlug/databases` - List all databases for a project environment
+
+**Query Parameters:**
+- None (filtering is handled by project/environment slugs in the path)
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/databases" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Databases retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "userId": 1,
+      "projectId": 1,
+      "environmentId": 1,
+      "resourceId": "production-db-codepanel-master",
+      "resourceType": "rds",
+      "name": "production-db",
+      "engine": "mysql",
+      "engineVersion": "8.0",
+      "region": "us-east-1",
+      "status": "available",
+      "endpoint": "production-db-codepanel-master.c9akicqqlrds.us-east-1.rds.amazonaws.com",
+      "port": 3306,
+      "allocatedStorage": 20,
+      "instanceClass": "db.t3.micro",
+      "multiAz": false,
+      "publiclyAccessible": false,
+      "positionX": 300,
+      "positionY": 400,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:35:00.000Z",
+      "deletedAt": null
+    },
+    {
+      "id": 2,
+      "userId": 1,
+      "projectId": 1,
+      "environmentId": 1,
+      "resourceId": "staging-db-codepanel-master",
+      "resourceType": "rds",
+      "name": "staging-db",
+      "engine": "postgres",
+      "engineVersion": "13.7",
+      "region": "us-east-1",
+      "status": "creating",
+      "endpoint": null,
+      "port": 5432,
+      "allocatedStorage": 50,
+      "instanceClass": "db.t3.small",
+      "multiAz": false,
+      "publiclyAccessible": false,
+      "positionX": 600,
+      "positionY": 500,
+      "createdAt": "2024-01-15T11:00:00.000Z",
+      "updatedAt": "2024-01-15T11:00:00.000Z",
+      "deletedAt": null
+    }
+  ]
+}
+```
+
+**Database Status Values:**
+- `creating` - Database instance is being created
+- `available` - Database instance is available and ready to accept connections
+- `backing-up` - Database instance is currently being backed up
+- `modifying` - Database instance is being modified
+- `deleting` - Database instance is being deleted
+- `deleted` - Database instance has been deleted
+- Other AWS RDS status values may also appear
+
+#### Get Database Details
+- `GET /api/:projectSlug/:environmentSlug/databases/:id` - Get details of a specific database
+
+**Path Parameters:**
+- `id` - Database database ID (not AWS resource ID)
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/databases/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Database retrieved successfully",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "projectId": 1,
+    "environmentId": 1,
+    "resourceId": "production-db-codepanel-master",
+    "resourceType": "rds",
+    "name": "production-db",
+    "engine": "mysql",
+    "engineVersion": "8.0",
+    "region": "us-east-1",
+    "status": "available",
+    "endpoint": "production-db-codepanel-master.c9akicqqlrds.us-east-1.rds.amazonaws.com",
+    "port": 3306,
+    "allocatedStorage": 20,
+    "instanceClass": "db.t3.micro",
+    "multiAz": false,
+    "publiclyAccessible": false,
+    "positionX": 300,
+    "positionY": 400,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:35:00.000Z",
+    "deletedAt": null
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Database not found",
+  "message": "The specified database does not exist or you do not have access"
+}
+```
+
+#### Sync Database Status from Cloud Provider
+
+**Note:** Database sync is now performed through the unified resources API. Use the unified sync endpoint instead of the type-specific endpoint.
+
+**Unified Sync Endpoint:** `PUT /api/:projectSlug/:environmentSlug/resources/:resourceId/sync`
+
+See [Resources API — Sync Resource from Cloud Provider](/api/05-resources#sync-resource-from-cloud-provider) for details.
+
+**Description:**
+- Fetches the latest database details from the cloud provider (AWS RDS, GCP Cloud SQL, or Azure Flexible Server)
+- Updates the database record with current status, endpoint, port, allocated storage, instance class, multi-AZ, and publicly accessible settings
+- Updates engine version if it has changed
+- Handles deleted databases (updates status to 'deleted' if not found in the cloud provider)
+
+**Example Request:**
+```bash
+# Sync database data from cloud provider and update database
+# resourceId is the database ID (numeric)
+curl -X PUT "https://api.gateways.app/api/codepanel/master/resources/1/sync" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Database synced successfully from AWS",
+  "data": {
+    "id": 1,
+    "resourceId": "production-db-codepanel-master",
+    "status": "available",
+    "endpoint": "production-db-codepanel-master.c9akicqqlrds.us-east-1.rds.amazonaws.com",
+    "port": 3306,
+    "allocatedStorage": 20,
+    "instanceClass": "db.t3.micro",
+    "multiAz": false,
+    "publiclyAccessible": false,
+    "engine": "mysql",
+    "engineVersion": "8.0.35",
+    "region": "us-east-1",
+    "awsData": {
+      "status": "available",
+      "endpoint": {
+        "address": "production-db-codepanel-master.c9akicqqlrds.us-east-1.rds.amazonaws.com",
+        "port": 3306
+      },
+      "allocatedStorage": 20,
+      "instanceClass": "db.t3.micro",
+      "multiAz": false,
+      "publiclyAccessible": false,
+      "engine": "mysql",
+      "engineVersion": "8.0.35",
+      "dbInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:production-db-codepanel-master"
+    },
+    "syncedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+
+**1. Database Not Found in Cloud Provider:**
+```json
+{
+  "error": "Database not found in AWS",
+  "message": "Database production-db-codepanel-master was not found in AWS. It may have been deleted.",
+  "data": {
+    "id": 1,
+    "resourceId": "production-db-codepanel-master",
+    "status": "deleted",
+    "synced": true
+  }
+}
+```
+
+**2. Cloud Connection Not Active:**
+```json
+{
+  "error": "Cloud connection not active",
+  "message": "The cloud connection for this project is not active or not connected"
+}
+```
+
+**Note:** The sync endpoint:
+- Fetches the latest database details from the cloud provider
+- Updates the database record with current status, endpoint, port, allocated storage, instance class, multi-AZ, and publicly accessible settings
+- Updates engine version if it has changed
+- Handles deleted databases (updates status to 'deleted' if not found in the cloud provider)
+
+#### Get Database Pulse/Metrics
+- `GET /api/:projectSlug/:environmentSlug/databases/:id/pulse` - Get database metrics (CPU, connections, memory, storage, I/O, network)
+
+**Description:**
+- **AWS only.** Fetches real-time and historical metrics from AWS CloudWatch for RDS. For GCP Cloud SQL, returns 501 Not Implemented.
+- Returns CPU utilization, database connections, memory, storage, read/write latency, IOPS, and network throughput
+- Supports custom time ranges and aggregation periods
+
+**Path Parameters:**
+- `id` - Database database ID (not AWS resource ID)
+
+**Query Parameters:**
+- `startTime` (optional): ISO 8601 timestamp for start time (default: 1 hour ago)
+- `endTime` (optional): ISO 8601 timestamp for end time (default: now)
+- `period` (optional): Period in seconds for metric aggregation (default: 300 = 5 minutes, minimum: 60)
+
+**Example:**
+```bash
+# Get database metrics for the last hour (default)
+curl "https://api.gateways.app/api/codepanel/master/databases/1/pulse" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get database metrics for a custom time range
+curl "https://api.gateways.app/api/codepanel/master/databases/1/pulse?startTime=2024-01-15T10:00:00Z&endTime=2024-01-15T11:00:00Z&period=60" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Database metrics retrieved successfully",
+  "data": {
+    "databaseId": 1,
+    "resourceId": "production-db-codepanel-master",
+    "region": "us-east-1",
+    "timeRange": {
+      "start": "2024-01-15T10:00:00.000Z",
+      "end": "2024-01-15T11:00:00.000Z",
+      "period": 300
+    },
+    "metrics": {
+      "cpu": {
+        "average": 15.5,
+        "maximum": 45.2,
+        "minimum": 5.1,
+        "unit": "Percent",
+        "datapoints": [
+          {
+            "timestamp": "2024-01-15T10:05:00.000Z",
+            "value": 12.3
+          },
+          {
+            "timestamp": "2024-01-15T10:10:00.000Z",
+            "value": 18.7
+          }
+        ]
+      },
+      "connections": {
+        "average": 25.0,
+        "maximum": 50,
+        "minimum": 10,
+        "unit": "Count",
+        "datapoints": [
+          {
+            "timestamp": "2024-01-15T10:05:00.000Z",
+            "value": 20
+          },
+          {
+            "timestamp": "2024-01-15T10:10:00.000Z",
+            "value": 30
+          }
+        ]
+      },
+      "memory": {
+        "average": 2147483648,
+        "maximum": 2147483648,
+        "minimum": 2000000000,
+        "unit": "Bytes",
+        "datapoints": [
+          {
+            "timestamp": "2024-01-15T10:05:00.000Z",
+            "value": 2147483648
+          }
+        ]
+      },
+      "storage": {
+        "average": 18000000000,
+        "maximum": 20000000000,
+        "minimum": 15000000000,
+        "unit": "Bytes",
+        "datapoints": [
+          {
+            "timestamp": "2024-01-15T10:05:00.000Z",
+            "value": 18000000000
+          }
+        ]
+      },
+      "readLatency": {
+        "average": 0.002,
+        "maximum": 0.005,
+        "minimum": 0.001,
+        "unit": "Seconds",
+        "datapoints": []
+      },
+      "writeLatency": {
+        "average": 0.003,
+        "maximum": 0.008,
+        "minimum": 0.001,
+        "unit": "Seconds",
+        "datapoints": []
+      },
+      "readIOPS": {
+        "average": 150.5,
+        "maximum": 300,
+        "minimum": 50,
+        "unit": "Count/Second",
+        "datapoints": []
+      },
+      "writeIOPS": {
+        "average": 75.2,
+        "maximum": 150,
+        "minimum": 25,
+        "unit": "Count/Second",
+        "datapoints": []
+      },
+      "networkReceive": {
+        "average": 1024000,
+        "maximum": 2048000,
+        "minimum": 512000,
+        "unit": "Bytes/Second",
+        "datapoints": []
+      },
+      "networkTransmit": {
+        "average": 2048000,
+        "maximum": 4096000,
+        "minimum": 1024000,
+        "unit": "Bytes/Second",
+        "datapoints": []
+      }
+    }
+  }
+}
+```
+
+**Available Metrics:**
+- **cpu**: CPU utilization percentage (0-100%)
+- **connections**: Number of active database connections
+- **memory**: Freeable memory in bytes
+- **storage**: Free storage space in bytes
+- **readLatency**: Average read latency in seconds
+- **writeLatency**: Average write latency in seconds
+- **readIOPS**: Read IOPS (Input/Output Operations Per Second)
+- **writeIOPS**: Write IOPS
+- **networkReceive**: Network receive throughput in bytes/second
+- **networkTransmit**: Network transmit throughput in bytes/second
+
+**Note:** 
+- Metrics are fetched from AWS CloudWatch
+- If a metric has no data for the specified time range, it will be `null`
+- The `datapoints` array contains time-series data points for charting
+- Default time range is the last 1 hour with 5-minute aggregation periods
+- Minimum period is 60 seconds (1 minute)
+
+#### Delete Database
+
+Database deletion is performed **only** via the unified resources API:
+
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+Use the database resource’s **database ID** (from the list or get-detail response), not the AWS resource ID. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id).
+
+**What happens:** The service deletes the RDS (or cloud) database instance, removes all resource connections, then soft-deletes the resource. A final snapshot is created by default before deletion. Deletion can take several minutes.
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Response (No cloud connection):**
+```json
+{
+  "error": "No cloud connection",
+  "message": "Project does not have a cloud connection"
+}
+```
+
+## Database Connection
+
+Once a database is created and its status becomes `available`, you can connect to it using:
+
+- **Endpoint:** The `endpoint` field in the database response
+- **Port:** The `port` field (3306 for MySQL/MariaDB, 5432 for PostgreSQL)
+- **Username:** The `masterUsername` you provided during creation
+- **Password:** The `masterUserPassword` you provided during creation
+
+**Example Connection String (MySQL):**
+```
+mysql://admin:SecurePassword123!@production-db-codepanel-master.c9akicqqlrds.us-east-1.rds.amazonaws.com:3306/database_name
+```
+
+**Example Connection String (PostgreSQL):**
+```
+postgresql://postgres:MySecurePassword123!@app-database-codepanel-master.c9akicqqlrds.us-east-1.rds.amazonaws.com:5432/postgres
+```
+
+**Note:** Ensure that your security group rules allow inbound connections on the database port from your application servers or IP addresses.
+
+### Database in Unified Resources API
+
+Databases are also included in the unified resources API endpoints:
+
+#### List All Resources (includes databases)
+- `GET /api/:projectSlug/:environmentSlug/resources` - See [Resources API Documentation](/api/05-resources)
+- `GET /api/:projectSlug/:environmentSlug/resources` - See [Resources API Documentation](/api/05-resources)
+
+#### Get Database via Resources API
+- `GET /api/:projectSlug/:environmentSlug/resources/:resourceId` - Get database details via unified resources API (use database’s resource ID)
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Database details retrieved successfully",
+  "data": {
+    "id": 1,
+    "resourceType": "database",
+    "resourceId": "production-db-codepanel-master",
+    "name": "production-db",
+    "position": {
+      "x": 300,
+      "y": 400
+    },
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "Master"
+    },
+    "region": "us-east-1",
+    "status": "available",
+    "metadata": {
+      "engine": "mysql",
+      "engineVersion": "8.0",
+      "endpoint": "production-db-codepanel-master.c9akicqqlrds.us-east-1.rds.amazonaws.com",
+      "port": 3306,
+      "allocatedStorage": 20,
+      "instanceClass": "db.t3.micro",
+      "multiAz": false,
+      "publiclyAccessible": false,
+      "volumeType": "gp3",
+      "storageSize": 20,
+      "vcpus": 2,
+      "memoryGb": 1.0,
+      "pricePerHour": 0.017
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:35:00.000Z"
+  }
+}
+```
+
+### Database Position Updates
+
+Database positions can be updated using the resource positions API:
+
+- `PATCH /api/:projectSlug/:environmentSlug/resources/:resourceId/position` - See [Resource Positions API Documentation](/api/10-resource-positions)
+
+**Example:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/codepanel/master1/resources/123/position" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"x": 500, "y": 600}'
+```
+
+### Database Features
+
+#### Default Security Group
+- Databases use the default security group for the project/environment
+- If the default security group doesn't exist, it's created automatically
+- Security group name format: `GatewaysApp-Default-{projectSlug}-{environmentSlug}`
+- Default security group allows all inbound traffic (0.0.0.0/0)
+- **Important:** You may need to add specific rules to allow database connections on the database port (3306 for MySQL/MariaDB, 5432 for PostgreSQL)
+
+#### DB Subnet Group
+- A DB subnet group is automatically created when a database is created
+- DB subnet group name format: `gateways-{projectSlug}-{environmentSlug}`
+- Requires subnets in at least 2 availability zones
+- Uses subnets from the default VPC
+- DB subnet groups are reused per project/environment to avoid duplication
+
+#### Engine Support
+- **MySQL:** Full support for MySQL engine versions
+- **PostgreSQL:** Full support for PostgreSQL engine versions
+- **MariaDB:** Full support for MariaDB engine versions
+
+#### Multi-AZ Deployment
+- Multi-AZ deployment provides high availability and automatic failover
+- When enabled, RDS automatically creates a standby instance in a different availability zone
+- Available for all supported engines
+- Increases cost (approximately 2x) but provides better reliability
+
+#### Public Accessibility
+- When enabled, the database endpoint is accessible from the internet
+- When disabled, the database is only accessible from within the VPC
+- For production use, it's recommended to disable public accessibility and connect from within the VPC
+
+### Requirements
+
+1. **AWS Connection**: The project must have an active AWS cloud connection
+2. **Region**: A valid AWS region code must be provided (e.g., `us-east-1`, `eu-west-1`, `ap-south-1`)
+   - The region code format is validated (must match AWS region pattern)
+   - AWS will further validate the region when creating the database
+3. **Default VPC**: The AWS account must have a default VPC in the specified region
+4. **Subnets**: At least 2 subnets in different Availability Zones are required for DB subnet groups
+5. **AWS SDK Package**: The `@aws-sdk/client-rds` package must be installed (included by default)
+6. **CloudFormation Permissions**: The CloudFormation stack must include RDS permissions
+
+### Error Handling
+
+#### Common Errors
+
+**1. No Cloud Connection:**
+```json
+{
+  "error": "No cloud connection",
+  "message": "Project does not have a cloud connection. Please connect a cloud provider first."
+}
+```
+
+**2. Missing Required Fields:**
+```json
+{
+  "error": "Invalid request",
+  "message": "name is required and must be a non-empty string"
+}
+```
+
+**3. Invalid Engine:**
+```json
+{
+  "error": "Invalid engine",
+  "message": "engine must be one of: mysql, postgres, mariadb"
+}
+```
+
+**4. Insufficient Storage:**
+```json
+{
+  "error": "Invalid request",
+  "message": "allocatedStorage is required and must be at least 20 GB"
+}
+```
+
+**Note:** The API currently validates for a minimum of 20 GB (General Purpose SSD). If using Provisioned IOPS SSD (io1/io2) volume types, ensure at least 100 GB is allocated, though this is typically handled by AWS defaults.
+
+**5. Insufficient Subnets:**
+```json
+{
+  "error": "Insufficient subnets",
+  "message": "RDS requires subnets in at least 2 availability zones. Please ensure your VPC has subnets in multiple availability zones."
+}
+```
+
+**6. Project/Environment Not Found:**
+```json
+{
+  "error": "Project not found",
+  "message": "Project with slug \"codepanel\" not found or you do not have access"
+}
+```
+
+**7. Insufficient Permissions:**
+```json
+{
+  "error": "Insufficient permissions",
+  "message": "Your AWS IAM role does not have the required permissions to create RDS databases.",
+  "details": "User: arn:aws:sts::... is not authorized to perform: rds:CreateDBInstance...",
+  "suggestion": "Please update your CloudFormation stack to include the latest RDS permissions. The CloudFormation template has been updated with the required permissions. You need to update your stack in AWS Console or redeploy it with the latest template."
+}
+```
+
+### Notes
+
+- Database creation can take several minutes (typically 5-15 minutes depending on instance class and Multi-AZ configuration)
+- The API returns immediately with status "creating"
+- Use the describe endpoint or AWS Console to check creation progress
+- Once available, the endpoint field will contain the connection endpoint
+- DB subnet groups are automatically managed and reused per project/environment
+- Security groups can be customized via the firewall resource type and resource connections
+- Position coordinates allow for canvas-based UI visualization
+- Database deletion creates a final snapshot automatically
+
+### Related APIs
+
+For querying available database configurations before creating a database:
+
+- **Database Types:** `GET /api/cloud/:projectSlug/database-types` - List all supported database engine types (auth)
+- **Database Versions:** `GET /api/cloud/:projectSlug/:environmentSlug/database-versions` - List available database engines and versions (uses project's connected cloud; auth)
+- **Database Instance Types:** `GET /api/cloud/:projectSlug/database-instance-types` - List available RDS instance types with specifications (auth)
+
+See [Cloud Infrastructure API Documentation](/api/12-cloud-infrastructure#database-types) for complete details and examples.
+

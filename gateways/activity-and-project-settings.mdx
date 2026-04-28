@@ -1,0 +1,41 @@
+---
+title: Activity and project settings
+description: Environment activity auditing and project-level configuration in the Gateways console.
+---
+
+Both views require a selected **project** and **environment**. Access the routes from the header **Activity** and **Settings** links.
+
+## Activity
+
+**Route:** `/{project}/{environment}/activity`
+
+The activity view lists auditable events for the environment, including resource lifecycle actions, connection changes, and invocations where instrumented.
+
+| Capability | Description |
+| --- | --- |
+| Filtering | Restrict by resource type and by action class (for example create, update, delete, connect). |
+| Pagination | Incremental loading when the event set exceeds the page size. |
+| Refresh | Reloads the current result set from the API. |
+
+If the workspace has no projects, or the user role excludes activity visibility, the **Activity** navigation entry is disabled.
+
+## Project settings
+
+**Route:** `/{project}/{environment}/settings`
+
+Settings render as a scrollable document with a section index. Typical sections:
+
+| Section | Content |
+| --- | --- |
+| General | Project identification and metadata. |
+| Usage | Consumption or quota metrics when exposed by the deployment. |
+| Cloud provider | Linked cloud account status. Users with sufficient permission can initiate linking or **unlink** the account. Unlinking may be blocked while active resources remain. |
+| Environments | CRUD operations on environments within the project, subject to role constraints. |
+| Members | Project- or environment-scoped access as implemented. |
+| Danger zone | Irreversible operations such as project deletion; requires explicit confirmation. |
+
+Section focus may follow scroll position or explicit selection from the index.
+
+### Cloud linking
+
+Projects without a linked account are directed to **Connect cloud**. The flow matches the canvas-level cloud connection experience and follows provider-specific requirements.

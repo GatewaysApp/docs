@@ -1,0 +1,25 @@
+---
+title: Application sources
+description: The five ways to create an application in Create—upload, GitHub, GitLab, Bitbucket, or Docker image—and how they map to the API.
+---
+
+When you choose **Application** in **Create**, you pick a **source**: how code or an image gets into the deployment. Each option still creates an **`application`** resource; the choice is stored as **`uploadType`** / **application type** (for example `upload-app`, `github-repo`, `docker-image`).
+
+| Menu label | Internal id | Typical purpose |
+| --- | --- | --- |
+| **Upload app** | `upload-app` | Ship a **zip** or folder artifact; best when code is not in a connected Git repo. |
+| **GitHub repo** | `github-repo` | Deploy from **GitHub** (branch, path, build commands). Requires **Git** account linkage as your deployment configures. |
+| **GitLab repo** | `gitlab-repo` | Same for **GitLab.com** or compatible GitLab. |
+| **Bitbucket repo** | `bitbucket-repo` | Same for **Bitbucket**. |
+| **Docker image** | `docker-image` | Run a **container image** from a registry, or upload a **Docker image archive** where supported. |
+
+**API:** Every source uses the **`application`** resource type for catalog and plan checks. The backend tells flows apart with **`applicationType`** / **`uploadType`** on the resource.
+
+**Next steps**
+
+- [Upload app & build commands](/gateways/resources/application/upload-and-build)
+- [Git repositories](/gateways/resources/application/git-repositories)
+- [Docker image](/gateways/resources/application/docker-image)
+- [Canvas and operations](/gateways/resources/application/canvas-and-operations)
+
+[← Application overview](/gateways/resources/application)

@@ -1,0 +1,597 @@
+---
+title: "GitHub"
+description: "HTTP API: GitHub"
+---
+
+### Application Endpoints
+
+GatewaysApp supports three types of applications:
+1. **Upload Type**: Upload files/archives to S3
+2. **Docker Type**: Reference Docker images from registries
+3. **Git Type**: Reference code from Git repositories (GitHub, GitLab, Bitbucket)
+
+#### Create Application
+
+##### Upload Type Application
+- `POST /api/:projectSlug/:environmentSlug/applications` - Upload an application file (zip or regular file) to S3 in the user's AWS account
+
+**Request:**
+- Content-Type: `multipart/form-data`
+- Authentication: Bearer token required
+- Body parameters:
+  - `applicationType` (required): Must be `"upload"`
+  - `files` (required): The files to upload (zip file or any other file type, can be multiple files with the same field name)
+  - `name` (optional): Application name (if not provided, uses file names)
+  - `positionX` (optional): Canvas X position (number or numeric string)
+  - `positionY` (optional): Canvas Y position (number or numeric string)
+  - `commands` (optional): Commands to run the app, one per line (e.g. `npm install` then `npm start`). Stored in metadata as `runCommands` array.
+  - `environmentVariables` (optional): JSON string or object of key-value environment variables (e.g. `{"NODE_ENV":"production","PORT":"3000"}`). Stored in metadata as `applicationEnvironmentVariables` and injected into the systemd service file at deploy time.
+
+**Features:**
+- Automatically creates a zip file if the uploaded file is not already a zip
+- Uploads to S3 in the customer's AWS account using STS AssumeRole
+- Stores application metadata in the database
+- Calculates SHA256 checksum for integrity verification
+- Files are stored in the customer's S3 bucket, not in the SaaS account
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/applications" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "applicationType=upload" \
+  -F "files=@app.zip" \
+  -F "name=My Application" \
+  -F "positionX=100" \
+  -F "positionY=200" \
+  -F 'environmentVariables={"NODE_ENV":"production","PORT":"3000"}'
+```
+
+**Example Response (Upload Type):**
+```json
+{
+  "message": "Application uploaded successfully",
+  "data": {
+    "id": 1,
+    "name": "My Application",
+    "applicationType": "upload",
+    "fileName": "app.zip",
+    "fileSize": 1048576,
+    "s3Location": "https://deplo-a-apps-123456789012-us-east-1.s3.us-east-1.amazonaws.com/applications/1/1/my-application/1.0.0/app.zip",
+    "s3Bucket": "deplo-a-apps-123456789012-us-east-1",
+    "s3Key": "applications/1/1/my-application/1.0.0/app.zip",
+    "checksum": "a1b2c3d4e5f6...",
+    "status": "uploaded",
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "Master"
+    },
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+##### Docker Type Application
+- `POST /api/:projectSlug/:environmentSlug/applications` - Create a Docker application
+
+**Request:**
+- Content-Type: `application/json`
+- Authentication: Bearer token required
+- Body parameters:
+  - `applicationType` (required): Must be `"docker"`
+  - `name` (required): Application name
+  - `dockerImage` (required): Docker image ID (e.g., `"_/node"` for Node.js, `"nginx"`, `"postgres"`)
+  - `port` (optional): App port — port your app listens on inside the container (1–65535, default `80`). We map it to the same port on the host and Caddy/Nginx proxy to it.
+  - `dockerEnvironmentVariables` (optional): Object with environment variables (e.g., `{"NODE_ENV": "production", "PORT": "3000"}`)
+  - `positionX` (optional): Canvas X position (number)
+  - `positionY` (optional): Canvas Y position (number)
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/applications" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "applicationType": "docker",
+    "name": "My Node App",
+    "dockerImage": "_/node",
+    "port": 80,
+    "dockerEnvironmentVariables": {
+      "NODE_ENV": "production",
+      "PORT": "3000"
+    },
+    "positionX": 100,
+    "positionY": 200
+  }'
+```
+
+**Example Response (Docker Type):**
+```json
+{
+  "message": "Docker application created successfully",
+  "data": {
+    "id": 2,
+    "name": "My Node App",
+    "applicationType": "docker",
+    "status": "created",
+    "metadata": {
+      "dockerImage": "_/node",
+      "port": 80,
+      "dockerEnvironmentVariables": {
+        "NODE_ENV": "production",
+        "PORT": "3000"
+      }
+    },
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+##### Git Type Application
+- `POST /api/:projectSlug/:environmentSlug/applications` - Create a Git application (GitHub, GitLab, or Bitbucket)
+
+Git connections are **workspace-owned**. The project must belong to a workspace; the workspace can have multiple GitHub/GitLab/Bitbucket accounts connected.
+
+**Prerequisites:**
+1. Project must be in a workspace.
+2. Connect a Git provider account for that workspace: `GET /api/:workspaceSlug/git/:provider/authorize` (then complete OAuth; callback closes the window).
+3. List workspace connections: `GET /api/:workspaceSlug/git/connections` (optional `?provider=github|gitlab|bitbucket`).
+4. Fetch repositories: `GET /api/:workspaceSlug/git/:provider/repositories` (optional query `connectionId` if the workspace has multiple accounts for that provider).
+5. Select a repository from the list.
+
+**Request:**
+- Content-Type: `application/json`
+- Authentication: Bearer token required
+- Body parameters:
+  - `applicationType` (required): Must be `"git"`
+  - `gitProvider` (required): Git provider - must be `"github"`, `"gitlab"`, or `"bitbucket"`
+  - `name` (required): Application name
+  - `gitConnectionId` (optional): ID of the workspace git connection to use. Required when the workspace has multiple accounts for the same provider; otherwise the first connection for that provider is used.
+  - `repositoryId` (required): Repository ID (from repository list)
+  - OR `repositoryFullName` (required): Repository full name in format `owner/repo` (e.g., `"username/my-repo"`)
+  - OR `repositoryUrl` (required): Full repository URL (e.g., `https://github.com/username/repo`, `https://gitlab.com/username/repo`, `https://bitbucket.org/username/repo`)
+  - `branch` (optional): Git branch name (defaults to `"main"`). Examples: `"main"`, `"master"`, `"develop"`
+  - `path` (optional): Path within repository (e.g., `"/src"`, `"/app"`)
+  - `positionX` (optional): Canvas X position (number)
+  - `positionY` (optional): Canvas Y position (number)
+  - `commands` (optional): Commands to run the app, one per line. Stored in metadata as `runCommands` array.
+  - `environmentVariables` (optional): Object of key-value environment variables (e.g. `{"NODE_ENV": "production", "PORT": "3000"}`). Stored in metadata as `applicationEnvironmentVariables` and injected into the systemd service file at deploy time.
+
+**Note:** You must provide one of: `repositoryId`, `repositoryFullName`, or `repositoryUrl`. The provider in `repositoryUrl` must match `gitProvider`. Use `gitConnectionId` when the workspace has multiple connected accounts for the same provider.
+
+**Example Request (GitHub):**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/applications" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "applicationType": "git",
+    "gitProvider": "github",
+    "name": "My GitHub App",
+    "repositoryId": 123456789,
+    "branch": "main",
+    "path": "/src",
+    "environmentVariables": {
+      "NODE_ENV": "production",
+      "PORT": "3000"
+    }
+  }'
+```
+
+**Example Request (GitLab):**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/applications" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "applicationType": "git",
+    "gitProvider": "gitlab",
+    "name": "My GitLab App",
+    "repositoryFullName": "username/my-repo",
+    "branch": "main",
+    "path": "/src"
+  }'
+```
+
+**Example Request (Bitbucket):**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/applications" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "applicationType": "git",
+    "gitProvider": "bitbucket",
+    "name": "My Bitbucket App",
+    "repositoryUrl": "https://bitbucket.org/username/my-repo",
+    "branch": "main"
+  }'
+```
+
+**Example Response (Git Type):**
+```json
+{
+  "message": "github application created successfully",
+  "data": {
+    "id": 3,
+    "name": "My GitHub App",
+    "applicationType": "git",
+    "gitProvider": "github",
+    "status": "created",
+    "metadata": {
+      "applicationType": "git",
+      "gitProvider": "github",
+      "repositoryId": 123456789,
+      "repositoryFullName": "username/my-repo",
+      "repositoryUrl": "https://github.com/username/my-repo",
+      "branch": "main",
+      "path": "/src"
+    },
+    "createdAt": "2024-01-15T11:30:00Z"
+  }
+}
+```
+
+**Notes:**
+- Git connections are **per workspace**. Connect accounts under the workspace: `GET /api/:workspaceSlug/git/:provider/authorize`.
+- A workspace can have **multiple** GitHub, GitLab, or Bitbucket accounts; use `gitConnectionId` to choose which one when creating an app.
+- Use `repositoryId` for the most reliable repository identification.
+- If `branch` is not provided, it defaults to `"main"`.
+- Git applications are created with status `"created"` and can be updated later.
+
+#### Git OAuth Flow (Workspace-scoped)
+
+Git connections are owned by a **workspace**. Multiple accounts per provider per workspace are supported.
+
+**Base path:** ` /api/:workspaceSlug/git`
+
+**Step 1: Get Authorization URL** (use your workspace slug)
+```bash
+# GitHub
+curl "https://api.gateways.app/api/MY_WORKSPACE_SLUG/git/github/authorize" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# GitLab
+curl "https://api.gateways.app/api/MY_WORKSPACE_SLUG/git/gitlab/authorize" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Bitbucket
+curl "https://api.gateways.app/api/MY_WORKSPACE_SLUG/git/bitbucket/authorize" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Response:** Contains `authorizationUrl` and `state`. Open `authorizationUrl` in a browser; after OAuth the callback page closes the window (no redirect to frontend).
+
+**Step 2: List workspace connections** (multiple per provider allowed; optional `?provider=github|gitlab|bitbucket` to filter)
+```bash
+curl "https://api.gateways.app/api/MY_WORKSPACE_SLUG/git/connections" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Filter by provider
+curl "https://api.gateways.app/api/MY_WORKSPACE_SLUG/git/connections?provider=github" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Step 3: Fetch Repositories** (optional query `connectionId` when workspace has multiple accounts for that provider)
+```bash
+# GitHub
+curl "https://api.gateways.app/api/MY_WORKSPACE_SLUG/git/github/repositories" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# With specific connection
+curl "https://api.gateways.app/api/MY_WORKSPACE_SLUG/git/github/repositories?connectionId=5" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Step 4: Get branches** (optional `connectionId`)
+```bash
+curl "https://api.gateways.app/api/MY_WORKSPACE_SLUG/git/github/repositories/owner/repo/branches" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Disconnect an account**
+```bash
+curl -X DELETE "https://api.gateways.app/api/MY_WORKSPACE_SLUG/git/connections/:connectionId" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Repositories retrieved successfully",
+  "count": 10,
+  "data": [
+    {
+      "id": 123456789,
+      "name": "my-repo",
+      "full_name": "username/my-repo",
+      "description": "My repository description",
+      "private": false,
+      "html_url": "https://github.com/username/my-repo",
+      "clone_url": "https://github.com/username/my-repo.git",
+      "default_branch": "main",
+      "language": "JavaScript",
+      "updated_at": "2024-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Callback URL:** OAuth redirect is still ` /api/git/:provider/callback` (e.g. `http://localhost:3033/api/git/github/callback`). No frontend redirect; the callback page closes the popup.
+
+**Environment Variables Required:**
+
+**GitHub:**
+- `GITHUB_CLIENT_ID`: Your GitHub OAuth App Client ID
+- `GITHUB_CLIENT_SECRET`: Your GitHub OAuth App Client Secret
+- `GITHUB_REDIRECT_URI`: OAuth callback URL (default: `https://api.gateways.app/api/git/github/callback`)
+
+**GitLab:**
+- `GITLAB_CLIENT_ID`: Your GitLab OAuth Application Client ID
+- `GITLAB_CLIENT_SECRET`: Your GitLab OAuth Application Client Secret
+- `GITLAB_REDIRECT_URI`: OAuth callback URL (default: `https://api.gateways.app/api/git/gitlab/callback`)
+- `GITLAB_API_BASE`: GitLab API base URL (default: `https://gitlab.com/api/v4`)
+
+**Bitbucket:**
+- `BITBUCKET_CLIENT_ID`: Your Bitbucket OAuth Consumer Key
+- `BITBUCKET_CLIENT_SECRET`: Your Bitbucket OAuth Consumer Secret
+- `BITBUCKET_REDIRECT_URI`: OAuth callback URL (default: `https://api.gateways.app/api/git/bitbucket/callback`)
+
+**Common:**
+- `FRONTEND_URL`: Frontend URL for OAuth redirects (default: `https://api.gateways.app`)
+
+#### List Applications
+- `GET /api/:projectSlug/:environmentSlug/applications` - List all applications for a project environment
+
+**Authentication:** Bearer token required
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/applications" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Applications retrieved successfully",
+  "projectSlug": "codepanel",
+  "environmentSlug": "master",
+  "count": 2,
+  "data": [
+    {
+      {
+        "id": 1,
+        "name": "My Application",
+        "applicationType": "upload",
+        "fileName": "app.zip",
+        "fileSize": 1048576,
+        "fileType": "application/zip",
+        "s3Bucket": "deplo-a-apps-123456789012-us-east-1",
+        "s3Key": "applications/1/1/my-application/1.0.0/app.zip",
+        "s3Region": "us-east-1",
+        "checksum": "a1b2c3d4e5f6...",
+        "status": "uploaded",
+        "createdAt": "2024-01-15T10:30:00Z",
+        "updatedAt": "2024-01-15T10:30:00Z"
+      },
+      {
+        "id": 2,
+        "name": "My Node App",
+        "applicationType": "docker",
+        "status": "created",
+        "metadata": {
+          "dockerImage": "_/node",
+          "dockerEnvironmentVariables": {
+            "NODE_ENV": "production",
+            "PORT": "3000"
+          }
+        },
+        "createdAt": "2024-01-15T11:00:00Z",
+        "updatedAt": "2024-01-15T11:00:00Z"
+      }
+  ]
+}
+```
+
+#### Get Application Details
+- `GET /api/:projectSlug/:environmentSlug/applications/:applicationId` - Get details of a specific application
+
+**Authentication:** Bearer token required
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/applications/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Application retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "My Application",
+    "applicationType": "upload",
+    "fileName": "app.zip",
+    "fileSize": 1048576,
+    "fileType": "application/zip",
+    "s3Bucket": "deplo-a-apps-123456789012-us-east-1",
+    "s3Key": "applications/1/1/my-application/1.0.0/app.zip",
+    "s3Region": "us-east-1",
+    "s3Location": "https://deplo-a-apps-123456789012-us-east-1.s3.us-east-1.amazonaws.com/applications/1/1/my-application/1.0.0/app.zip",
+    "checksum": "a1b2c3d4e5f6...",
+    "status": "uploaded",
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "Master"
+    },
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+#### Update Application
+
+- `PUT /api/:projectSlug/:environmentSlug/applications/:applicationId` - Update an application resource
+
+**Authentication:** Bearer token required
+
+**Request:**
+- For **upload type**: Content-Type: `multipart/form-data`
+- For **docker/git type**: Content-Type: `application/json`
+
+**Body Parameters:**
+- `name` (optional): Application name
+- `applicationType` (optional): Application type (`upload`, `docker`, or `github`). If not provided, keeps existing type.
+- `commands` (optional): Commands to run the app, newline-separated string (one command per line). Stored in metadata as `runCommands` array. Applies to all application types.
+- `runCommands` (optional): Array of command strings (alternative to `commands`). Stored in metadata as `runCommands` array.
+- `environmentVariables` (optional): Object of key-value environment variables for **upload** and **git** types (e.g. `{"NODE_ENV": "production", "PORT": "3000"}`). Stored in metadata as `applicationEnvironmentVariables` and injected into the systemd service file on next deploy. Not used for Docker type (use `dockerEnvironmentVariables` instead).
+
+**Type-Specific Parameters:**
+
+**Upload Type:**
+- `files` (optional): New files to upload (replaces existing files if provided)
+
+**Docker Type:**
+- `dockerImage` (optional): Docker image ID
+- `port` (optional): App port — port your app listens on inside the container (1–65535). Mapped to the same port on the host; Caddy/Nginx proxy to it.
+- `dockerEnvironmentVariables` (optional): Object with environment variables
+
+**Git Type:**
+- `gitProvider` (optional): Git provider - `github`, `gitlab`, or `bitbucket` (defaults to existing provider)
+- `gitConnectionId` (optional): Workspace git connection ID to use (when workspace has multiple accounts for that provider)
+- `repositoryId` (optional): Repository ID (from repository list)
+- `repositoryFullName` (optional): Repository full name in format `owner/repo`
+- `repositoryUrl` (optional): Repository URL (must match provider if `gitProvider` is specified)
+- `branch` (optional): Git branch name (e.g., `main`, `master`)
+- `path` (optional): Path within repository (e.g., `/src`, `/app`)
+
+**Example Request (Update Docker Application):**
+```bash
+curl -X PUT "https://api.gateways.app/api/codepanel/master/applications/2" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Node App",
+    "applicationType": "docker",
+    "dockerImage": "node:18",
+    "port": 80,
+    "dockerEnvironmentVariables": {
+      "NODE_ENV": "production",
+      "PORT": "8080"
+    }
+  }'
+```
+
+**Example Request (Update Upload Application with New Files):**
+```bash
+curl -X PUT "https://api.gateways.app/api/codepanel/master/applications/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "name=Updated Application" \
+  -F "applicationType=upload" \
+  -F "files=@new-app.zip"
+```
+
+**Example Request (Update Git Application):**
+```bash
+curl -X PUT "https://api.gateways.app/api/codepanel/master/applications/3" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Git App",
+    "applicationType": "git",
+    "gitProvider": "github",
+    "repositoryUrl": "https://github.com/username/my-repo",
+    "branch": "main",
+    "path": "/src"
+  }'
+```
+
+**Example Request (Update run commands only):**
+```bash
+curl -X PUT "https://api.gateways.app/api/codepanel/master/applications/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"commands": "npm install\nnpm run build\nnode server.js"}'
+```
+
+**Example Request (Update environment variables for upload/git app):**
+```bash
+curl -X PUT "https://api.gateways.app/api/codepanel/master/applications/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"environmentVariables": {"NODE_ENV": "production", "PORT": "3000", "API_KEY": "secret"}}'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Application updated successfully",
+  "data": {
+    "id": 2,
+    "name": "Updated Node App",
+    "applicationType": "docker",
+    "status": "created",
+    "metadata": {
+      "applicationType": "docker",
+      "dockerImage": "node:18",
+      "port": 80,
+      "dockerEnvironmentVariables": {
+        "NODE_ENV": "production",
+        "PORT": "8080"
+      }
+    },
+    "updatedAt": "2024-01-15T12:00:00Z"
+  }
+}
+```
+
+**Notes:**
+- Only provided fields will be updated; omitted fields remain unchanged
+- For upload type, providing new files will replace the existing S3 file
+- Changing `applicationType` will update the metadata structure accordingly
+- All updates preserve the existing application ID and relationships
+
+#### Delete Application
+
+Application deletion is performed **only** via the unified resources API:
+
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+Use the application's **database ID**. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id).
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**S3 Bucket Naming:**
+- Default bucket name format: `deplo-a-apps-{accountId}-{region}`
+- Example: `deplo-a-apps-123456789012-us-east-1`
+- The bucket is automatically created in the customer's AWS account when the first file is uploaded (requires `s3:CreateBucket` permission)
+
+**S3 Object Key Format:**
+- Format: `applications/{projectId}/{environmentId}/{applicationId}/{fileName}`
+- Example: `applications/1/1/123/app.zip`
+
+**File Size Limits:**
+- Maximum file size: 500 MB
+
+**Security:**
+- Files are encrypted at rest in S3 using AES256
+- SHA256 checksum is calculated for integrity verification
+- Files are stored in the customer's AWS account, not the SaaS account
+- Access is controlled via STS AssumeRole with External ID

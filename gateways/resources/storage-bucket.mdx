@@ -1,0 +1,33 @@
+---
+title: Storage bucket
+description: Object storage—API subtype storage_bucket; region, versioning, and public access in the panel.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | **Object storage** (S3, GCS buckets, Azure Blob containers—provider-dependent). |
+| **Create menu** | Often references **S3** on AWS. |
+| **API subtype** | `storage_bucket`. |
+| **Panel** | **`StorageBucketConfigurationPanel`** — **name**, **region** (from the project regions API), optional **description**, **versioning** toggle, and **block public access** (defaults toward blocking public access when unset). |
+
+## Configuration (typical)
+
+- **Region** — Defaults to the project’s default or first active region when available.
+- **Versioning** — Enable object version history where the provider supports it.
+- **Public access** — When **public access is blocked**, the bucket is not world-readable by default; adjust only when you intend a public asset workflow (often combined with [static website](/gateways/resources/static-website) or public read policies where allowed).
+
+## Canvas and connections
+
+- Use with [Utilities → Storage bucket explorer](/gateways/resources/utilities#storage-bucket-explorer) to browse objects.
+- Serve via [static website](/gateways/resources/static-website) hosting patterns or connect to other resources your **resource connection** rules allow.
+
+## Operations
+
+- **Sync** updates bucket metadata from the cloud.
+- **Delete** removes the bucket when empty or per provider rules (check for versioned objects and policies first).
+
+**API:** [API documentation](/api/index) → **Storage**, **Resources**.
+
+[← Resource types hub](/gateways/resources)

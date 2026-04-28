@@ -1,0 +1,716 @@
+---
+title: "Serverless Functions"
+description: "HTTP API: Serverless Functions"
+---
+
+# Serverless Functions API
+
+Serverless functions are AWS Lambda functions that allow users to run code without managing servers. Users can specify the runtime, architecture, and code, and the function will be deployed to AWS Lambda with an invocation endpoint.
+
+## Base URL
+
+All endpoints are prefixed with `/api/:projectSlug/:environmentSlug/functions`
+
+## Important Notes
+
+1. **Lambda Execution Role**: A Lambda execution role **must exist in the customer's AWS account** (not in the SaaS provider's account). This role grants the Lambda function permissions to access other AWS services (e.g., CloudWatch Logs).
+   - **Automatic Creation**: The latest version of the CloudFormation template (`infrastructure/customer-connector.yaml`) automatically creates the `GatewaysAppLambdaExecutionRole` with the correct trust policy and `AWSLambdaBasicExecutionRole` managed policy. Simply update your CloudFormation stack to get this role created.
+   - **Trust Policy**: The role's trust policy must allow `lambda.amazonaws.com` to assume the role. This is automatically configured when using the CloudFormation template.
+   - **Permissions**: The role is created with `AWSLambdaBasicExecutionRole` for logging. Additional permissions can be added if your Lambda functions need access to other AWS services (e.g., S3, DynamoDB).
+   - **Default Role**: If `LAMBDA_EXECUTION_ROLE_ARN` is not set in your environment variables, the system will automatically use `arn:aws:iam::{customerAccountId}:role/GatewaysAppLambdaExecutionRole` in the customer's account.
+   - **Account Verification**: The system automatically extracts the customer's account ID from their GatewaysAppDeployRole ARN to ensure the Lambda function is created in the correct account.
+   - **IAM PassRole Permission**: The `GatewaysAppDeployRole` in the customer's account must have `iam:PassRole` permission for the Lambda execution role. This is already included in the CloudFormation template. If you're using a custom role ARN, ensure `iam:PassRole` is granted for that role. See  (`../../LAMBDA-PERMISSIONS-UPDATE.md` — see repository) for troubleshooting.
+
+2. **Code Packaging**: The function code is packaged into a ZIP file before deployment. The file structure depends on the runtime:
+   - **Node.js**: `index.js`
+   - **Python**: `lambda_function.py`
+   - **Java**: `Handler.java`
+   - **.NET**: `Function.cs`
+   - **Go**: `main.go`
+   - **Ruby**: `lambda_function.rb`
+   - **Custom/Unknown**: `index.js`
+
+3. **Runtime and Architecture**:
+   - **Supported Runtimes**: See [Get Lambda Runtimes](/api/12-cloud-infrastructure#get-lambda-runtimes) in the Cloud Infrastructure API for a list of available runtimes.
+   - **Supported Architectures**: `x86_64` (default) and `arm64`.
+
+4. **Function Endpoint**: After creation, Lambda functions do not automatically have a public HTTP endpoint. You would typically integrate them with AWS API Gateway for HTTP access. This API currently only supports direct invocation via the `/invoke` endpoint.
+
+## Endpoints
+
+### Create Function
+
+Create a new serverless function (AWS Lambda). Code is **not** required in the request: a dummy/starter file is created automatically based on the handler (multi-file structure). Add or edit files after creation via the function files API.
+
+**Endpoint:** `POST /api/:projectSlug/:environmentSlug/functions`
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "name": "my-function",
+  "runtime": "nodejs20.x",
+  "architecture": "x86_64",
+  "handler": "index.handler",
+  "region": "us-east-1",
+  "description": "My serverless function",
+  "environmentVariables": {
+    "NODE_ENV": "production",
+    "API_URL": "https://api.example.com"
+  },
+  "environmentVariablesLocked": ["API_URL"],
+  "positionX": 100,
+  "positionY": 200
+}
+```
+
+**Parameters:**
+- `name` (required): Function name. Must be a non-empty string. This name will be used directly as the AWS Lambda function name (after sanitization to meet AWS requirements: 1-64 characters, alphanumeric, hyphens, underscores). **Important:** Function names must be unique within your AWS account and region. If a function with the same name already exists, creation will fail.
+- `runtime` (required): Lambda runtime identifier. Use the [Get Lambda Runtimes](/api/12-cloud-infrastructure#get-lambda-runtimes) endpoint to retrieve the full list of available runtimes. Common examples:
+  - **Node.js:** `nodejs20.x`, `nodejs18.x`, `nodejs16.x`
+  - **Python:** `python3.12`, `python3.11`, `python3.9`
+  - **Java:** `java21`, `java17`, `java11`, `java8.al2`
+  - **.NET:** `dotnet8`, `dotnet6`
+  - **Go:** `go1.x`
+  - **Ruby:** `ruby3.2`, `ruby2.7`
+  - **Custom:** `provided.al2023`, `provided.al2`
+  **Note:** Only active runtimes should be used. Deprecated runtimes (marked as inactive) are not recommended for new functions.
+- `architecture` (required): CPU architecture. Must be either `x86_64` or `arm64`. Default: `x86_64`
+- `handler` (required): Function handler. A dummy file is created based on this (e.g. `index.handler` → `index.js` with a stub handler). Format depends on runtime:
+  - **Node.js:** `index.handler` (file.exportedFunction)
+  - **Python:** `lambda_function.lambda_handler` (file.function)
+  - **Java:** `com.example.Handler::handleRequest` (package.class::method)
+  - **.NET:** `MyFunction::MyFunction.Function::FunctionHandler` (assembly::namespace.class::method)
+  - **Go:** `main` (package)
+- `region` (required): AWS region where the function will be deployed (e.g., `us-east-1`, `eu-west-1`)
+- `description` (optional): Function description
+- `environmentVariables` (optional): JSON object of key-value environment variables (e.g., `{"NODE_ENV":"production","API_URL":"https://api.example.com"}`). Stored in metadata and injected into the Lambda function at runtime.
+- `environmentVariablesLocked` (optional): Array of keys for which values should be masked when fetching (e.g., `["API_KEY"]`). Locked keys keep their values but are not returned in API responses.
+- `positionX` (optional): Canvas X coordinate for draggable cards
+- `positionY` (optional): Canvas Y coordinate for draggable cards
+
+**Response:** `201 Created`
+```json
+{
+  "message": "Function created successfully",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "projectId": 1,
+    "environmentId": 1,
+    "resourceId": "my-function",
+    "name": "my-function",
+    "runtime": "nodejs20.x",
+    "architecture": "x86_64",
+    "handler": "index.handler",
+    "region": "us-east-1",
+    "status": "creating",
+    "endpoint": "https://abc123xyz.lambda-url.us-east-1.on.aws/",
+    "description": "My serverless function",
+    "positionX": 100,
+    "positionY": 200,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Important Notes:**
+- **No code in request:** Create does not accept `code` in the body. A dummy/starter file is created automatically from the handler (e.g. `index.handler` → `index.js` with a stub). Use the function files API to add or edit files after creation.
+- A **Function URL** is automatically created when the function is created
+- The Function URL provides a dedicated HTTPS endpoint for your Lambda function
+- The endpoint is publicly accessible (AuthType: NONE) by default
+- CORS is configured to allow all origins, methods, and headers
+- The endpoint will be available in the `endpoint` field once the function is created
+- If Function URL creation fails, the function will still be created (endpoint will be `null`)
+
+**Function URL:**
+When a function is created, a Function URL is automatically generated. This provides a dedicated HTTPS endpoint that you can use to invoke your Lambda function directly via HTTP requests. The Function URL:
+- Is publicly accessible by default (no authentication required)
+- Supports CORS (configured to allow all origins)
+- Provides a stable HTTPS endpoint for your function
+- Can be used for webhooks, APIs, or direct HTTP invocations
+
+**Error Responses:**
+- `400 Bad Request`: Invalid request body or missing required fields
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Access denied
+- `404 Not Found`: Project or environment not found
+- `500 Internal Server Error`: Failed to create function in AWS
+
+**Note:** If Function URL creation fails (e.g., due to permissions), the function will still be created successfully, but the `endpoint` field will be `null`. You can manually create a Function URL later via the AWS Console.
+
+---
+
+### List Functions
+
+List all functions in a project environment.
+
+**Endpoint:** `GET /api/:projectSlug/:environmentSlug/functions`
+
+**Authentication:** Required
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Functions retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "my-function",
+      "runtime": "nodejs20.x",
+      "architecture": "x86_64",
+      "handler": "index.handler",
+      "region": "us-east-1",
+      "status": "active",
+      "endpoint": "https://abc123xyz.lambda-url.us-east-1.on.aws/",
+      "description": "My serverless function",
+      "positionX": 100,
+      "positionY": 200,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized`: Missing or invalid authentication token
+- `404 Not Found`: Project or environment not found
+
+---
+
+### Get Function
+
+Get details of a specific function.
+
+**Endpoint:** `GET /api/:projectSlug/:environmentSlug/functions/:id`
+
+**Authentication:** Required
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Function retrieved successfully",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "projectId": 1,
+    "environmentId": 1,
+    "resourceId": "my-function",
+    "name": "my-function",
+    "runtime": "nodejs20.x",
+    "architecture": "x86_64",
+    "code": "exports.handler = async (event) => { return { statusCode: 200, body: JSON.stringify(event) }; };",
+    "handler": "index.handler",
+    "region": "us-east-1",
+    "status": "active",
+    "endpoint": "https://abc123xyz.lambda-url.us-east-1.on.aws/",
+    "description": "My serverless function",
+    "positionX": 100,
+    "positionY": 200,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid function ID
+- `401 Unauthorized`: Missing or invalid authentication token
+- `404 Not Found`: Function not found
+
+---
+
+### Update Function
+
+Update a function's handler, architecture, position, memory, timeout, or ephemeral storage. Code is updated via the [function files](#function-file-management-multiple-files) API, not this endpoint.
+
+**Endpoint:** `PUT /api/:projectSlug/:environmentSlug/functions/:id`
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "handler": "index.handler",
+  "architecture": "x86_64",
+  "memorySize": 256,
+  "timeout": 30,
+  "ephemeralStorage": 512,
+  "positionX": 150,
+  "positionY": 250
+}
+```
+
+**Parameters:**
+- `handler` (optional): Updated function handler
+- `architecture` (optional): CPU architecture. **AWS Lambda / GCP / Azure:** `x86_64` or `arm64`
+- `memorySize` (optional): Memory allocation in MB. **AWS Lambda:** 128–10240. **GCP Cloud Functions:** up to 8192 (1st gen) or 32768 (2nd gen). **Azure Functions:** depends on plan (e.g. Consumption 1.5 GB default).
+- `timeout` (optional): Max execution time in seconds. **AWS Lambda:** 1–900 (15 min). **GCP Cloud Functions:** 1–540 (9 min, 1st gen). **Azure Functions:** up to 600 (10 min) on Consumption; higher on Premium/Dedicated.
+- `ephemeralStorage` (optional): Ephemeral storage (/tmp) size in MB. **AWS Lambda only:** 512–10240; ignored for GCP and Azure.
+- `positionX` (optional): Updated X coordinate
+- `positionY` (optional): Updated Y coordinate
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Function updated successfully",
+  "data": {
+    "id": 1,
+    "name": "my-function",
+    "runtime": "nodejs20.x",
+    "architecture": "x86_64",
+    "handler": "index.handler",
+    "region": "us-east-1",
+    "status": "active",
+    "memorySize": 256,
+    "timeout": 30,
+    "ephemeralStorage": 512,
+    "positionX": 150,
+    "positionY": 250,
+    "updatedAt": "2024-01-15T11:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid request body
+- `401 Unauthorized`: Missing or invalid authentication token
+- `404 Not Found`: Function not found
+- `500 Internal Server Error`: Failed to update function in AWS
+
+---
+
+### Sync Function Status from Cloud Provider
+
+**Note:** Function sync is now performed through the unified resources API. Use the unified sync endpoint instead of the type-specific endpoint.
+
+**Unified Sync Endpoint:** `PUT /api/:projectSlug/:environmentSlug/resources/:resourceId/sync`
+
+See [Resources API — Sync Resource from Cloud Provider](/api/05-resources#sync-resource-from-cloud-provider) for details.
+
+Sync/refresh function data from the cloud provider (AWS Lambda, GCP Cloud Functions, or Azure Functions) and update the function record.
+
+**Description:**
+- Fetches the latest function details from the cloud provider
+- Updates the function record with current status, runtime, architecture, handler, memory, timeout, and configuration
+- Handles deleted functions (updates status to 'Failed' if not found in the cloud provider)
+
+**Example Request:**
+```bash
+# Sync function status from cloud provider
+# resourceId is the database ID (numeric)
+curl -X PUT "https://api.gateways.app/api/codepanel/master/resources/1/sync" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Function synced successfully",
+  "data": {
+    "id": 1,
+    "name": "my-lambda-function",
+    "resourceId": "my-lambda-function",
+    "functionArn": "arn:aws:lambda:us-east-1:123456789012:function:my-lambda-function",
+    "status": "Active",
+    "runtime": "nodejs20.x",
+    "architecture": "x86_64",
+    "handler": "index.handler",
+    "memorySize": 128,
+    "timeout": 30,
+    "region": "us-east-1",
+    "position": {
+      "x": 100,
+      "y": 150
+    },
+    "awsData": {
+      "status": "Active",
+      "state": "Active",
+      "stateReason": null,
+      "runtime": "nodejs20.x",
+      "architecture": "x86_64",
+      "handler": "index.handler",
+      "memorySize": 128,
+      "timeout": 30,
+      "lastModified": "2024-01-15T11:00:00.000Z",
+      "codeSize": 1024
+    },
+    "updatedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+
+**1. Function Not Found in Cloud Provider:**
+```json
+{
+  "error": "Function not found in AWS",
+  "message": "Function \"my-lambda-function\" was not found in AWS. It may have been deleted.",
+  "data": {
+    "id": 1,
+    "resourceId": "my-lambda-function",
+    "status": "Failed",
+    "synced": true
+  }
+}
+```
+
+**2. Cloud Connection Not Active:**
+```json
+{
+  "error": "Cloud connection not active",
+  "message": "The cloud connection for this project is not active or not connected"
+}
+```
+
+**Note:** The sync endpoint:
+- Fetches the latest function details from the cloud provider
+- Updates the function record with current status, runtime, architecture, handler, memory, and timeout
+- Updates environment variables and tags if they have changed
+- Handles deleted functions (updates status to 'Failed' if not found in the cloud provider)
+
+---
+
+### Delete Function
+
+Function (resource) deletion is performed **only** via the unified resources API:
+
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+Use the function’s **database ID**. The service deletes the Lambda/Cloud Function from the cloud, removes all resource connections, then soft-deletes the resource. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id).
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Note:** Deleting the function resource removes the entire function. To upload a new version of function code, use the [Upload Function ZIP](#upload-function-zip) endpoint.
+
+---
+
+## Upload Function ZIP
+
+Upload a ZIP file containing function code. The ZIP replaces all existing files in the function. Supports multiple files (e.g., `index.js`, `utils/helper.js`).
+
+**Endpoint:** `POST /api/:projectSlug/:environmentSlug/functions/:id/upload`
+
+**Authentication:** Required
+
+**Request:** `multipart/form-data` with field `file` (ZIP file)
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/functions/1/upload" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "file=@function.zip"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Function code uploaded successfully",
+  "data": {
+    "count": 3,
+    "updatedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+**Note:**
+- The ZIP replaces all existing files in the function
+- Supported for **AWS Lambda**, **GCP Cloud Functions**, and **Azure Functions**
+- Only text/code files (e.g., .js, .py, .ts) are included; binary files (images, fonts) are skipped
+- File paths must not contain `..`, absolute paths, or Windows-style paths
+- The function is automatically redeployed to the cloud provider after upload
+
+**Error Responses:**
+- `400 Bad Request`: No file provided, invalid ZIP, or no text/code files found
+- `401 Unauthorized`: Missing or invalid authentication token
+- `404 Not Found`: Function not found
+- `500 Internal Server Error`: Failed to upload or redeploy
+
+---
+
+## Function Code Examples
+
+### Node.js Example
+
+**Handler:** `index.handler`
+
+**Code:**
+```javascript
+exports.handler = async (event) => {
+  console.log('Event:', JSON.stringify(event));
+  
+  return {
+    statusCode: 200,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      message: 'Hello from Lambda!',
+      received: event
+    })
+  };
+};
+```
+
+### Python Example
+
+**Handler:** `lambda_function.lambda_handler`
+
+**Code:**
+```python
+def lambda_handler(event, context):
+    print(f'Event: {event}')
+    
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Content-Type': 'application/json'
+        },
+        'body': {
+            'message': 'Hello from Lambda!',
+            'received': event
+        }
+    }
+```
+
+### Java Example
+
+**Handler:** `com.example.Handler::handleRequest`
+
+**Code:**
+```java
+package com.example;
+
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.RequestHandler;
+import java.util.HashMap;
+import java.util.Map;
+
+public class Handler implements RequestHandler<Map<String, Object>, Map<String, Object>> {
+    @Override
+    public Map<String, Object> handleRequest(Map<String, Object> event, Context context) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("statusCode", 200);
+        
+        Map<String, Object> body = new HashMap<>();
+        body.put("message", "Hello from Lambda!");
+        body.put("received", event);
+        
+        response.put("body", body);
+        return response;
+    }
+}
+```
+
+---
+
+## Function Status
+
+Functions can have the following statuses:
+- `creating`: Function is being created in AWS
+- `active`: Function is active and ready to invoke
+- `inactive`: Function is inactive
+- `updating`: Function code or configuration is being updated
+- `failed`: Function creation or update failed
+
+---
+
+## Architecture Options
+
+- **x86_64**: Intel/AMD 64-bit architecture (default, wider compatibility)
+- **arm64**: ARM 64-bit architecture (better price/performance, lower cost)
+
+**Note:** ARM64 architecture is available for most runtimes and offers up to 34% better price-performance.
+
+---
+
+## Runtime Compatibility
+
+For the most up-to-date list of available runtimes, use the [Get Lambda Runtimes](/api/12-cloud-infrastructure#get-lambda-runtimes) endpoint. This returns all supported runtimes from the metadata table, including their status (active/inactive) and configuration details.
+
+**Common Supported Runtimes:**
+
+| Runtime | x86_64 | arm64 | Status | Notes |
+|---------|--------|-------|--------|-------|
+| nodejs20.x | ✅ | ✅ | Active | Latest Node.js |
+| nodejs18.x | ✅ | ✅ | Active | LTS |
+| python3.12 | ✅ | ✅ | Active | Latest Python |
+| python3.11 | ✅ | ✅ | Active | |
+| java21 | ✅ | ✅ | Active | Latest Java |
+| java17 | ✅ | ✅ | Active | LTS |
+| java11 | ✅ | ✅ | Active | |
+| dotnet8 | ✅ | ✅ | Active | Latest .NET |
+| dotnet6 | ✅ | ✅ | Active | |
+| go1.x | ✅ | ✅ | Active | Go 1.x |
+| ruby3.2 | ✅ | ✅ | Active | Ruby 3.2 |
+| ruby2.7 | ✅ | ✅ | Active | |
+| provided.al2023 | ✅ | ✅ | Active | Custom runtime (AL2023) |
+| provided.al2 | ✅ | ✅ | Active | Custom runtime (AL2) |
+| nodejs16.x | ✅ | ✅ | Inactive | Deprecated |
+| python3.9 | ✅ | ✅ | Inactive | Deprecated |
+| java8.al2 | ✅ | ✅ | Inactive | Deprecated |
+
+**Note:** Always query the metadata API to get the current list of runtimes and their status. Only active runtimes should be used for new functions.
+
+---
+
+## Integration with Resources API
+
+Functions are included in the unified resources API:
+
+- **List all resources:** `GET /api/:projectSlug/:environmentSlug/resources?type=all`
+- **List functions only:** `GET /api/:projectSlug/:environmentSlug/resources?type=function`
+- **Get function details:** `GET /api/:projectSlug/:environmentSlug/resources/function/:functionId`
+
+---
+
+## Resource Connections
+
+Functions can be connected to other resources using the resource connections API. See the [Resource Connections API documentation](/api/07-resource-connections) for details.
+
+---
+
+## AWS Lambda Configuration
+
+When a function is created, the following AWS Lambda configurations are applied:
+
+1. **Runtime:** User-specified runtime (e.g., nodejs20.x, python3.12)
+2. **Architecture:** User-specified architecture (x86_64 or arm64)
+3. **Handler:** User-specified handler (e.g., index.handler)
+4. **Timeout:** 30 seconds (default, can be updated via the API)
+5. **Memory:** 128 MB (default, can be updated via the API)
+6. **Execution Role:** The Lambda execution role **must exist in the customer's AWS account**. The system uses:
+   - The role specified in `LAMBDA_EXECUTION_ROLE_ARN` environment variable (if set), or
+   - The default role `arn:aws:iam::{customerAccountId}:role/GatewaysAppLambdaExecutionRole` in the customer's account
+   - The customer's account ID is automatically extracted from their GatewaysAppDeployRole ARN
+
+**Note:** 
+- Timeout and memory can be updated via the API's update endpoint or AWS Console/CLI.
+- The execution role must be created in the customer's AWS account before creating Lambda functions.
+- The role must have a trust policy allowing `lambda.amazonaws.com` to assume it.
+- The `GatewaysAppDeployRole` must have `iam:PassRole` permission for the Lambda execution role (already included in the CloudFormation template). See  (`../../LAMBDA-PERMISSIONS-UPDATE.md` — see repository) for details.
+
+---
+
+## Best Practices
+
+1. **Handler Naming:**
+   - Use descriptive handler names that match your code structure
+   - Follow runtime-specific conventions (e.g., `file.exportedFunction` for Node.js)
+
+2. **Code Structure:**
+   - Keep functions focused on a single task
+   - Handle errors appropriately
+   - Return consistent response formats
+
+3. **Performance:**
+   - Use ARM64 architecture for better price-performance
+   - Optimize code for cold starts
+   - Consider using Lambda layers for shared code
+
+4. **Security:**
+   - Never commit sensitive data in function code
+   - Use environment variables or AWS Secrets Manager for credentials
+   - Follow the principle of least privilege for execution roles
+
+5. **Monitoring:**
+   - Monitor function invocations via AWS CloudWatch
+   - Set up alarms for errors and latency
+   - Review function logs regularly
+
+---
+
+## Limitations
+
+- Maximum function code size: 50 MB (zipped)
+- Maximum deployment package size: 250 MB (unzipped)
+- Maximum function timeout: 900 seconds (15 minutes)
+- Maximum memory: 10,240 MB
+- Maximum ephemeral storage: 10,240 MB
+
+For larger deployments, consider using:
+- Lambda layers for shared code
+- Container images for very large dependencies
+- S3 for code storage (not currently supported via API)
+
+---
+
+## Error Handling
+
+Functions should return appropriate status codes and error messages. Example error response:
+
+```javascript
+exports.handler = async (event) => {
+  try {
+    // Your code here
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: true })
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: error.message
+      })
+    };
+  }
+};
+```
+
+---
+
+## Troubleshooting
+
+**Function not invoking:**
+- Check that the function status is `active`
+- Verify the handler name matches your code structure
+- Check AWS CloudWatch Logs for error messages
+
+**Function timeout:**
+- Increase timeout via AWS Console (max 15 minutes)
+- Optimize code performance
+- Check for external dependencies causing delays
+
+**Code update not taking effect:**
+- Wait a few moments for deployment to complete
+- Check function status - it should show `active` after update
+- Verify the code was updated in the database
+
+**Invocation errors:**
+- Check function logs in AWS CloudWatch
+- Verify the payload format matches what your function expects
+- Ensure the function has proper error handling
+
+**"The role defined for the function cannot be assumed by Lambda" error:**
+- **The Lambda execution role does not exist**: Create the `GatewaysAppLambdaExecutionRole` in the customer's AWS account. See  (`../../LAMBDA-PERMISSIONS-UPDATE.md#creating-the-lambda-execution-role` — see repository) for detailed instructions.
+- **The role exists but has incorrect trust policy**: Ensure the role's trust policy allows `lambda.amazonaws.com` to assume it:
+  ```json
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "lambda.amazonaws.com"
+        },
+        "Action": "sts:AssumeRole"
+      }
+    ]
+  }
+  ```
+- **Wrong role name**: If you're using a custom role ARN via `LAMBDA_EXECUTION_ROLE_ARN` environment variable, verify the role exists and has the correct trust policy.
+
+**"is not authorized to perform: iam:PassRole" error:**
+- The `GatewaysAppDeployRole` is missing `iam:PassRole` permission for the Lambda execution role. Update the CloudFormation stack or manually add the permission. See  (`../../LAMBDA-PERMISSIONS-UPDATE.md` — see repository) for details.
+
+---
+

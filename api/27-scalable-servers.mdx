@@ -1,0 +1,365 @@
+---
+title: "Scalable Servers"
+description: "HTTP API: Scalable Servers"
+---
+
+# Scalable Servers API
+
+## Overview
+
+Scalable Servers are Auto Scaling Groups (ASG) that automatically adjust the number of EC2 instances based on demand. This provides high availability and automatic scaling for your applications.
+
+### Scalable Server Endpoints
+
+Scalable servers use AWS Auto Scaling Groups to automatically manage EC2 instance capacity. GatewaysApp creates ASGs with launch templates, default security groups, and configurable capacity limits.
+
+#### Create Scalable Server
+- `POST /api/:projectSlug/:environmentSlug/scalable-servers` - Create a new Auto Scaling Group in AWS
+
+**Description:** Creates an Auto Scaling Group with:
+- Launch template with specified instance type and AMI
+- Default security group (reuses project/environment default security group if it exists)
+- Configurable min/max/desired capacity
+- Automatic instance health checks
+- Support for multiple availability zones via subnets
+
+**Request Body:**
+```json
+{
+  "name": "my-scalable-server",
+  "instanceType": "t3.micro",      // Optional: EC2 instance type, default: "t3.micro"
+  "imageId": "ami-0c55b159cbfafe1f0",  // Optional: AMI ID, default: Amazon Linux 2
+  "minSize": 1,                    // Optional: Minimum instances, default: 1
+  "maxSize": 3,                    // Optional: Maximum instances, default: 3
+  "desiredCapacity": 1,            // Optional: Desired instances, default: 1
+  "region": "us-east-1",           // Optional: AWS region (uses project default if not provided)
+  "volumeType": "gp3",             // Optional: EBS volume type, default: "gp3"
+  "volumeSize": 8,                 // Optional: EBS volume size in GB, default: 8
+  "positionX": 100,                // Optional: Canvas X coordinate
+  "positionY": 200                 // Optional: Canvas Y coordinate
+}
+```
+
+**Capacity Constraints:**
+- `minSize` must be at least 0
+- `maxSize` must be at least 1
+- `desiredCapacity` must be between `minSize` and `maxSize` (inclusive)
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/scalable-servers" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "web-servers",
+    "instanceType": "t3.small",
+    "minSize": 2,
+    "maxSize": 10,
+    "desiredCapacity": 2,
+    "region": "us-east-1",
+    "positionX": 500,
+    "positionY": 300
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Scalable server created successfully",
+  "data": {
+    "id": 1,
+    "name": "web-servers",
+    "autoScalingGroupName": "gateways-codepanel-master-web-servers-1234567890",
+    "autoScalingGroupARN": "arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:uuid:autoScalingGroupName/gateways-codepanel-master-web-servers-1234567890",
+    "minSize": 2,
+    "maxSize": 10,
+    "desiredCapacity": 2,
+    "currentCapacity": 2,
+    "instances": [
+      {
+        "instanceId": "i-1234567890abcdef0",
+        "healthStatus": "Healthy",
+        "lifecycleState": "InService"
+      },
+      {
+        "instanceId": "i-0987654321fedcba0",
+        "healthStatus": "Healthy",
+        "lifecycleState": "InService"
+      }
+    ],
+    "region": "us-east-1",
+    "status": "active",
+    "position": {
+      "x": 500,
+      "y": 300
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### List Scalable Servers
+- `GET /api/:projectSlug/:environmentSlug/scalable-servers` - List all scalable servers for a project environment
+
+**Description:** Retrieves all scalable servers in the specified project and environment.
+
+**Example Request:**
+```bash
+curl -X GET "https://api.gateways.app/api/codepanel/master/scalable-servers" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Scalable servers retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "web-servers",
+      "autoScalingGroupARN": "arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:uuid:autoScalingGroupName/gateways-codepanel-master-web-servers-1234567890",
+      "minSize": 2,
+      "maxSize": 10,
+      "desiredCapacity": 2,
+      "currentCapacity": 2,
+      "instanceType": "t3.small",
+      "imageId": "ami-0c55b159cbfafe1f0",
+      "region": "us-east-1",
+      "status": "active",
+      "position": {
+        "x": 500,
+        "y": 300
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+#### Get Scalable Server Details
+- `GET /api/:projectSlug/:environmentSlug/scalable-servers/:id` - Get details of a specific scalable server
+
+**Description:** Retrieves detailed information about a specific scalable server, including instance details.
+
+**Example Request:**
+```bash
+curl -X GET "https://api.gateways.app/api/codepanel/master/scalable-servers/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Scalable server retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "web-servers",
+    "autoScalingGroupARN": "arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:uuid:autoScalingGroupName/gateways-codepanel-master-web-servers-1234567890",
+    "minSize": 2,
+    "maxSize": 10,
+    "desiredCapacity": 2,
+    "currentCapacity": 2,
+    "instances": [
+      {
+        "instanceId": "i-1234567890abcdef0",
+        "healthStatus": "Healthy",
+        "lifecycleState": "InService"
+      },
+      {
+        "instanceId": "i-0987654321fedcba0",
+        "healthStatus": "Healthy",
+        "lifecycleState": "InService"
+      }
+    ],
+    "instanceType": "t3.small",
+    "imageId": "ami-0c55b159cbfafe1f0",
+    "region": "us-east-1",
+    "status": "active",
+    "position": {
+      "x": 500,
+      "y": 300
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### Sync Scalable Server
+
+**Note:** Scalable server sync is now performed through the unified resources API. Use the unified sync endpoint instead of the type-specific endpoint.
+
+**Unified Sync Endpoint:** `PUT /api/:projectSlug/:environmentSlug/resources/:resourceId/sync`
+
+See [Resources API — Sync Resource from Cloud Provider](/api/05-resources#sync-resource-from-cloud-provider) for details.
+
+**Example Request:**
+```bash
+# Use the unified resources sync endpoint
+# resourceId is the database ID of the scalable server
+curl -X PUT "https://api.gateways.app/api/codepanel/master/resources/1/sync" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Scalable server synced successfully from AWS",
+  "data": {
+    "id": 1,
+    "name": "web-servers",
+    "autoScalingGroupARN": "arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:uuid:autoScalingGroupName/gateways-codepanel-master-web-servers-1234567890",
+    "minSize": 2,
+    "maxSize": 10,
+    "desiredCapacity": 2,
+    "currentCapacity": 2,
+    "instances": [
+      {
+        "instanceId": "i-1234567890abcdef0",
+        "healthStatus": "Healthy",
+        "lifecycleState": "InService",
+        "publicIp": "54.123.45.67",
+        "privateIp": "10.0.1.10"
+      }
+    ],
+    "region": "us-east-1",
+    "status": "active",
+    "synced": true,
+    "syncedAt": "2024-01-15T11:00:00.000Z"
+  }
+}
+```
+
+#### Update Scalable Server Capacity
+- `PATCH /api/:projectSlug/:environmentSlug/scalable-servers/:id/capacity` - Update scalable server capacity (minSize, maxSize, desiredCapacity)
+
+**Description:** Updates the Auto Scaling Group's capacity limits and desired capacity. AWS will automatically adjust the number of instances to match the new desired capacity.
+
+**Request Body:**
+```json
+{
+  "minSize": 1,          // Optional: New minimum instances
+  "maxSize": 5,          // Optional: New maximum instances
+  "desiredCapacity": 3   // Optional: New desired instances
+}
+```
+
+**Capacity Constraints:**
+- `minSize` must be at least 0 (if provided)
+- `maxSize` must be at least 1 (if provided)
+- `desiredCapacity` must be between `minSize` and `maxSize` (inclusive)
+
+**Example Request:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/codepanel/master/scalable-servers/1/capacity" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "minSize": 1,
+    "maxSize": 5,
+    "desiredCapacity": 3
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Scalable server capacity updated successfully",
+  "data": {
+    "id": 1,
+    "name": "web-servers",
+    "autoScalingGroupARN": "arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:uuid:autoScalingGroupName/gateways-codepanel-master-web-servers-1234567890",
+    "minSize": 1,
+    "maxSize": 5,
+    "desiredCapacity": 3,
+    "currentCapacity": 3,
+    "instances": [
+      {
+        "instanceId": "i-1234567890abcdef0",
+        "healthStatus": "Healthy",
+        "lifecycleState": "InService"
+      },
+      {
+        "instanceId": "i-0987654321fedcba0",
+        "healthStatus": "Healthy",
+        "lifecycleState": "InService"
+      },
+      {
+        "instanceId": "i-abcdef1234567890",
+        "healthStatus": "Healthy",
+        "lifecycleState": "InService"
+      }
+    ],
+    "region": "us-east-1",
+    "status": "active"
+  }
+}
+```
+
+#### Delete Scalable Server
+
+Scalable server deletion is performed **only** via the unified resources API:
+
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+Use the scalable server’s **database ID**. The service deletes resource connections (DNS, etc.), sets ASG capacity to 0, deletes the Auto Scaling Group from AWS, then soft-deletes the resource. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id).
+
+**Query:** `forceDelete=true` — Force delete even if instances are still running (default: `false`).
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example (force delete):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1?forceDelete=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Error Responses
+
+**Error: Invalid capacity**
+```json
+{
+  "error": "Invalid capacity",
+  "message": "desiredCapacity must be between minSize and maxSize"
+}
+```
+
+**Error: No cloud connection**
+```json
+{
+  "error": "No cloud connection",
+  "message": "Project does not have a cloud connection. Please connect your cloud provider first."
+}
+```
+
+**Error: Invalid cloud provider**
+```json
+{
+  "error": "Invalid cloud provider",
+  "message": "Scalable servers (Auto Scaling Groups) currently only support AWS"
+}
+```
+
+**Error: Scalable server not found**
+```json
+{
+  "error": "Scalable server not found",
+  "message": "The specified scalable server does not exist"
+}
+```
+
+### Notes
+
+- **Auto Scaling**: AWS automatically adjusts the number of instances based on your capacity settings. You can manually update capacity using the PATCH endpoint.
+- **Health Checks**: Auto Scaling Groups perform health checks on instances. Unhealthy instances are automatically terminated and replaced.
+- **Launch Templates**: Each Auto Scaling Group uses a launch template that defines the instance configuration (AMI, instance type, security groups, etc.).
+- **Multi-AZ Support**: Auto Scaling Groups automatically distribute instances across multiple Availability Zones via subnets.
+- **Connections**: Scalable servers can be connected to DNS resources and other resources similar to regular instances.
+- **Deletion**: Deleting a scalable server will terminate all instances and delete all associated connections (DNS records, etc.) before deleting the ASG itself.
+

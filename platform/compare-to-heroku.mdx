@@ -1,0 +1,20 @@
+---
+title: Gateways vs Heroku
+description: Your-cloud architecture console vs Heroku’s classic PaaS dynos and add-ons.
+---
+
+# Gateways vs Heroku
+
+**Heroku** popularized **git-push deploys**, **dynos**, and **add-ons** on Salesforce infrastructure—great for teams that want **opinionated PaaS** with minimal raw cloud exposure.
+
+**Gateways** assumes you (or your org) **operate AWS, Azure, or GCP directly** and need **visibility and control**: environments, connections between services, and APIs—not a single shared PaaS layer.
+
+| Topic | Gateways | Heroku |
+| --- | --- | --- |
+| **Abstraction** | Real cloud services you configure | Dynos, buildpacks, add-on marketplace |
+| **Portability** | Native to each cloud’s APIs | Heroku platform |
+| **Fit** | Regulated or multi-cloud shops, existing landing zones | Rapid app iteration on PaaS |
+
+If **Heroku’s model** still fits, it remains a strong **developer PaaS**. If you have **moved (or must use) hyperscaler accounts**, **Gateways** helps teams **see and run** that estate **without losing** a product-grade UX.
+
+[Compare hub](/platform) · [Cloud connections](/api/03-cloud-connections)

@@ -1,0 +1,134 @@
+---
+title: Authentication & API access
+description: Base URL, session tokens, API keys (sk_), WebSocket URL auth, and restrictions.
+---
+
+# Authentication & API access
+
+Use this page when integrating **HTTP clients**, **scripts**, or **WebSocket** clients with the Gateways API. Endpoint-level request and response bodies are documented on **[API documentation](/api/index)** and the numbered topic pages in this tab.
+
+## Base URL
+
+```
+https://api.gateways.app
+```
+
+Use your deployment’s host if you self-host the API.
+
+## Summary of credential types
+
+| Method | When to use | How you send it |
+| --- | --- | --- |
+| **Session JWT** | Interactive apps, first-party clients after login | `Authorization: Bearer <session_token>` |
+| **API key** | Automation, CI, integrations without a browser session | `X-API-Key: sk_...` **or** `Authorization: Bearer sk_...` |
+| **URL / WebSocket token** | Terminal, IDE, or other WebSocket upgrades | `?token=<session_jwt>` on the WebSocket URL, or `Authorization: Bearer`, or `Sec-WebSocket-Protocol` (see below) |
+
+- **Session tokens** are JWTs returned by **`POST /api/auth/login`**, **`POST /api/auth/signup`**, **`POST /api/auth/login/verify-2fa`**, and OAuth success redirects. They are tied to an active row in `sessions` (invalidated on logout or expiry).
+- **API keys** are opaque secrets prefixed with **`sk_`**, created in account settings via the API below. The server stores only a **SHA-256 hash**; the full secret is shown **once** at creation.
+
+---
+
+## Session JWT (Bearer)
+
+After a successful login or signup, responses include **`data.token`** (and often **`refreshToken`** for the product UI). Send the access token on every request:
+
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Two-factor (2FA):** If login returns **`requires2FA: true`**, complete **`POST /api/auth/login/verify-2fa`** before using the session token. See **[Authentication & user management](/api/01-authentication)**.
+
+**Errors:** `401` typically means missing token, expired session, or revoked session—log in again.
+
+---
+
+## API keys (`sk_…`)
+
+API keys authenticate as **your user** without a browser session. They are intended for **non-admin** project and resource APIs.
+
+### Create, list, and revoke
+
+Management endpoints require a **normal session JWT** (password or SSO login)—**not** an API key. The backend rejects key management when the active credential is an API key (`403`).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/users/api-keys` | List active keys (**metadata only**: id, name, prefix, dates). |
+| `POST` | `/api/users/api-keys` | Create a key. Body: `{ "name": "optional label" }` (string, max 128 chars). Returns the **`secret`** once in **`data.secret`**. |
+| `DELETE` | `/api/users/api-keys/:id` | Revoke a key by database id. |
+
+**Limits:** You can have at most **10** active keys per user. Creating an 11th returns **`429`** with `maxKeys`.
+
+**Create response (201):**
+
+```json
+{
+  "message": "Store this key securely; it will not be shown again.",
+  "data": {
+    "id": 123,
+    "name": "CI deploy",
+    "keyPrefix": "sk_a1b2c3d4e5",
+    "secret": "sk_……………………………………………………"
+  }
+}
+```
+
+### Using an API key on requests
+
+Send the raw secret (the full string starting with `sk_`) using **either**:
+
+```http
+X-API-Key: sk_……………………………………………………
+```
+
+**or**
+
+```http
+Authorization: Bearer sk_……………………………………………………
+```
+
+The server detects `sk_` in the Bearer value and resolves the key by hash. **Do not** send a session JWT and an API key in conflicting ways—use one credential per request.
+
+**Last used:** Successful key auth updates **`last_used_at`** for that key (best-effort).
+
+---
+
+## Restrictions for API keys
+
+- **Platform administration routes** — **Forbidden (`403`)** for API keys. They require a **browser-style session JWT** and operator privileges; they are not documented in this reference.
+- **Creating or revoking API keys** — Only with **session JWT** (`GET`/`POST`/`DELETE` `/api/users/api-keys`), not with another API key.
+
+All other authenticated routes that accept a session JWT generally accept an API key unless your deployment adds extra middleware.
+
+---
+
+## WebSocket and URL authentication
+
+WebSocket upgrades (for example **terminal** or **IDE** services) authenticate the same **session JWT** as HTTP, but browsers and proxies often pass the token outside the `Authorization` header.
+
+Supported patterns (as implemented in the WebSocket auth helper):
+
+1. **Query string:** `wss://host/path?token=<session_jwt>`
+2. **Header:** `Authorization: Bearer <session_jwt>`
+3. **Subprotocol:** first value in `Sec-WebSocket-Protocol` may carry the token
+
+The server verifies the JWT and checks that the token is still an **active session** in the database, then allows the upgrade.
+
+**Note:** API key secrets (`sk_…`) are for HTTP API key auth; WebSocket flows in the product typically use the **session JWT** from login.
+
+---
+
+## Choosing JWT vs API key
+
+| Scenario | Recommendation |
+| --- | --- |
+| User logged into the app | Session JWT |
+| Scripts, Terraform, cron jobs | API key |
+| Operator dashboards | Session JWT with appropriate role |
+| Public webhooks | Not covered here—use server-side verification of your own design |
+
+---
+
+## Related documentation
+
+- **[Authentication & user management](/api/01-authentication)** — Signup, login, 2FA, profile, sessions, passwords.
+- **[API documentation](/api/index)** — Full endpoint catalog and conventions.

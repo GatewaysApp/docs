@@ -1,0 +1,32 @@
+---
+title: Command reference
+description: All gateways CLI subcommands for auth, init, push, deploy, list, and SSH.
+---
+
+## Commands
+
+| Command | Description |
+| --- | --- |
+| `gateways` / `gateways -h` | Help. `gateways -v` or `gateways version` prints the binary version. |
+| `gateways config` | Show global config path, token state (masked), and named accounts. |
+| `gateways login` | Email and password; stores the Bearer token. Supports `--email` / `--password` for non-interactive use. |
+| `gateways login verify` | Complete **2FA**: `--verification-token`, `--code`, and `--email` if needed. |
+| `gateways logout` | Sign out saved session(s); can target an email or `all`. |
+| `gateways me` | Current user profile (`GET /api/users/profile`). |
+| `gateways init <project>/<environment> [path]` | Create or update `.gateways.yaml`. Optional `[path]` sets default upload root. Flags: `--bucket-explorer-id`, `--static-website-id`, `--project`, `--environment`. |
+| `gateways reset` | Delete `.gateways.yaml` in the current directory (tokens unchanged). |
+| `gateways push [ref]` | Push an **upload** app (zip) or **static** site. Reuses saved `push_resource` or opens a picker. `gateways push .` re-opens the picker. Flags: `--path`, `--no-wait` (don’t wait for app→server deploy), `--sync` (CDN sync after static push), `--project`, `--environment`. |
+| `gateways list` | List upload applications and static websites in the current project/environment. |
+| `gateways resource <ref>` | Validate and save push target to `.gateways.yaml`. |
+| `gateways status` | Show effective `.gateways.yaml` for this directory. |
+| `gateways connect [ref]` | SSH to an instance; omit `ref` for an interactive picker. |
+| `gateways deploy app <path>` | Create an upload-type application from a file, zip, or directory. Flag: `--name`. |
+| `gateways deploy static <dir>` | Upload static files via bucket explorer. Flags: `--explorer-id`, `--website-id`, `--prefix`, `--dry-run`, `--sync`. |
+
+The `gateways static` command group exists for advanced/static CDN helpers (may be hidden in `--help` output).
+
+## Related
+
+- **[REST API](/api/index)** — HTTP endpoints the CLI uses.
+- **[Project file](/gateways/cli/project-file)** — Fields stored in `.gateways.yaml`.
+- **[Install](/gateways/cli/install)** — Get the binary on your machine.

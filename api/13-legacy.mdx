@@ -1,0 +1,13 @@
+---
+title: "13-legacy"
+description: "HTTP API: 13-legacy"
+---
+
+### Legacy SaaS Endpoints (Deprecated - use project-based endpoints instead)
+
+- `POST /api/create-server/connect-aws` - Generate CloudFormation connection URL (requires authentication, optional `projectSlug` in POST body to link connection to a project)
+- `POST /api/create-server/complete-connection` - Complete AWS connection with accountId and accountName (requires authentication, ARN auto-generated)
+- `POST /api/create-server` - Create EC2 instance in customer account (requires authentication, stores in database with name, project, and environment)
+- `GET /api/create-server/list?userId=123` - List all instances for a user
+- `GET /api/create-server/:instanceId?userId=123` - Get instance details
+- `DELETE /api/create-server/:instanceId?userId=123` - Delete/terminate an instance

@@ -1,0 +1,33 @@
+---
+title: Scalable server
+description: Auto scaling groups and scaled compute—API subtype scalable_server.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | **Horizontally scaled** compute: auto scaling groups (AWS), managed instance groups (GCP), VM scale sets (Azure), or equivalent—depending on the linked cloud. |
+| **Create menu** | “Create an Auto Scaling Group” (AWS-oriented wording; other providers use their native scaling resource). |
+| **API subtype** | `scalable_server`. |
+| **Panel** | **`ScalableServerConfigurationPanel`** — extends the same ideas as **Server** (region, OS/image, instance type, volume defaults) with **scaling** and **network** fields. |
+
+## Configuration (typical)
+
+- **Region**, **CPU architecture**, **OS / AMI**, **instance type**, **boot volume** — Same pattern as [Server](/gateways/resources/server), with provider-specific defaults (for example default volume types: GCP `pd-balanced`, Azure `Premium_LRS`, AWS `gp3`).
+- **Capacity** — **`minSize`**, **`maxSize`**, **`desiredCapacity`** — bounds and current desired count for the group.
+- **Instance network access (AWS)** — **`public`** (instances get public IPv4 and public subnets) vs **`private`** (no public IP; outbound often via NAT). Other clouds apply analogous private/public patterns where supported.
+
+## Canvas and connections
+
+- Often placed **behind** an HTTP/S front end when your deployment provides one, and protected by [firewalls](/gateways/resources/firewall).
+- **Runtime** resources can connect to group members where the platform supports installing runtimes on scaled instances.
+
+## Operations
+
+- **Capacity changes** may use dedicated API paths (for example PATCH capacity) in addition to general resource updates.
+- **Delete** removes the scaling group and underlying instances according to cloud behavior.
+
+**API:** [API documentation](/api/index) → **Scalable servers**, **Resources**, **Resource connections**.
+
+[← Resource types hub](/gateways/resources)

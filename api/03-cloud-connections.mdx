@@ -1,0 +1,488 @@
+---
+title: "List connected connections for a workspace (default behavior)"
+description: "HTTP API: List connected connections for a workspace (default behavior)"
+---
+
+### Cloud Connections API Endpoints (Workspace-Level)
+
+Cloud connections are now workspace-specific. Each workspace can have multiple cloud provider connections (AWS, GCP, Azure, etc.).
+
+- `GET /api/cloud-connections/:workspaceSlug` - List all cloud connections for a workspace
+- `POST /api/cloud-connections/:workspaceSlug/connect-aws` - Initiate AWS connection (generates CloudFormation URL)
+- `POST /api/cloud-connections/:workspaceSlug/connect-gcp` - Initiate GCP connection (creates pending connection)
+- `POST /api/cloud-connections/:workspaceSlug/connect-azure` - Initiate Azure connection (creates pending; run setup command in Azure Cloud Shell, then paste JSON/Base64 in complete)
+- `POST /api/cloud-connections/:workspaceSlug/:connectionId/complete` - Complete a cloud connection (AWS: after CloudFormation stack; GCP: with service account key; Azure: with azureCredentials JSON/Base64 + accountName)
+- `PATCH /api/cloud-connections/:workspaceSlug/:connectionId` - Update a cloud connection (e.g. account name)
+- `DELETE /api/cloud-connections/:workspaceSlug/:connectionId` - Delete (soft delete) a cloud connection
+
+#### List Cloud Connections
+
+**GET /api/cloud-connections/:workspaceSlug**
+
+List all cloud connections for a workspace with optional filtering.
+
+**Path Parameters:**
+- `workspaceSlug` - The slug of the workspace
+
+**Query Parameters:**
+- `status` - Filter by connection status (`pending`, `connected`, `failed`, `disconnected`). **By default, only `connected` connections are returned.** Use `status=failed` or `status=disconnected` to see other statuses.
+- `provider` - Filter by cloud provider name (`aws`, `gcp`, `azure`)
+- `provider_id` - Filter by cloud provider ID
+- `include_inactive` - Include inactive connections (`true`/`false`, default: `false`)
+
+**Permissions:**
+- User must be a member of the workspace
+- User must have `canViewResources` permission
+
+**Example:**
+```bash
+# List connected connections for a workspace (default behavior)
+curl https://api.gateways.app/api/cloud-connections/my-workspace \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# List only connected AWS connections
+curl "https://api.gateways.app/api/cloud-connections/my-workspace?provider=aws" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# List failed connections
+curl "https://api.gateways.app/api/cloud-connections/my-workspace?status=failed" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# List all connections including inactive and all statuses
+curl "https://api.gateways.app/api/cloud-connections/my-workspace?include_inactive=true&status=all" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Note:** By default, this endpoint returns only **connected** and **active** connections. To see failed or disconnected connections, use the `status` query parameter.
+
+**Response:**
+```json
+{
+  "message": "Cloud connections retrieved successfully",
+  "summary": {
+    "total": 3,
+    "byStatus": {
+      "connected": 2,
+      "pending": 1,
+      "failed": 0,
+      "disconnected": 0
+    }
+  },
+  "count": 3,
+  "data": [
+    {
+      "id": 1,
+      "cloudProvider": {
+        "id": 1,
+        "name": "aws",
+        "displayName": "Amazon Web Services"
+      },
+      "accountId": "123456789012",
+      "accountName": "Production AWS",
+      "region": "us-east-1",
+      "connectionStatus": "connected",
+      "connectedAt": "2024-01-15T10:30:00.000Z",
+      "isActive": true,
+      "createdAt": "2024-01-15T10:25:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+#### Connect AWS Account
+
+**POST /api/cloud-connections/:workspaceSlug/connect-aws**
+
+Initiate an AWS connection by generating a CloudFormation stack URL. This endpoint creates a pending connection and returns a URL that must be opened in AWS Console to complete the connection.
+
+**Path Parameters:**
+- `workspaceSlug` - The slug of the workspace
+
+**Request Body:**
+```json
+{
+  "region": "us-east-1"
+}
+```
+
+**Request Body Fields:**
+- `region` (optional) - AWS region (default: `us-east-1`)
+
+**Note:** `accountName` is not required here. It will be requested when completing the connection via the `/complete` endpoint.
+
+**Permissions:**
+- User must be a member of the workspace
+- User must have `canManageResources` permission
+- Workspace must not exceed the plan's `max_cloud_connections` limit
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/cloud-connections/my-workspace/connect-aws \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "region": "us-east-1"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": "AWS connection initiated",
+  "data": {
+    "connectionId": 1,
+    "connectionUrl": "https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://...",
+    "stackName": "DeploCloudConnection-xxx",
+    "region": "us-east-1",
+    "status": "pending"
+  }
+}
+```
+
+#### Complete Cloud Connection
+
+**POST /api/cloud-connections/:workspaceSlug/:connectionId/complete**
+
+Complete a pending cloud connection. For AWS: after the CloudFormation stack has been created. For GCP: by providing the service account key JSON. This endpoint updates the connection and marks it as connected.
+
+**Path Parameters:**
+- `workspaceSlug` - The slug of the workspace
+- `connectionId` - The ID of the connection to complete
+
+**Request Body (for AWS):**
+```json
+{
+  "accountId": "123456789012",
+  "accountName": "Production AWS"
+}
+```
+
+**Request Body Fields (for AWS):**
+- `accountId` (required) - The AWS account ID (12 digits). The role ARN will be automatically generated as `arn:aws:iam::{accountId}:role/GatewaysAppDeployRole`
+- `accountName` (required) - A friendly name to identify this AWS account connection (must be unique within the workspace)
+
+**Note (for AWS):** 
+- `accountName` must be unique within the workspace. If a connection with the same `accountName` already exists, the request will fail with a duplicate account name error.
+- The `roleArn` is automatically generated from the `accountId` using the format: `arn:aws:iam::{accountId}:role/GatewaysAppDeployRole`
+- Before marking the connection as complete, the endpoint will test the AWS connection by attempting to assume the IAM role. If the test fails, the connection status will be set to `failed` and an error will be returned.
+
+**Note (for GCP):** See the "Complete Cloud Connection (GCP)" section below for GCP-specific request body format.
+
+**Permissions:**
+- User must be a member of the workspace
+- User must have `canManageResources` permission
+- Connection must belong to the specified workspace
+
+**Example (for AWS):**
+```bash
+curl -X POST https://api.gateways.app/api/cloud-connections/my-workspace/1/complete \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountId": "123456789012",
+    "accountName": "Production AWS"
+  }'
+```
+
+**Response (for AWS):**
+```json
+{
+  "message": "Cloud connection completed successfully",
+  "data": {
+    "id": 1,
+    "cloudProvider": {
+      "id": 1,
+      "name": "aws",
+      "displayName": "Amazon Web Services"
+    },
+    "accountId": "123456789012",
+    "accountName": "Production AWS",
+    "region": "us-east-1",
+    "connectionStatus": "connected",
+    "connectedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### Connect GCP Account
+
+**POST /api/cloud-connections/:workspaceSlug/connect-gcp**
+
+Initiate a GCP connection by creating a pending connection and generating a connection URL. Similar to AWS CloudFormation URL, this endpoint returns a URL that opens Google Cloud Shell with an automated setup script that creates a service account with all necessary IAM roles.
+
+**Path Parameters:**
+- `workspaceSlug` - The slug of the workspace
+
+**Request Body:**
+```json
+{
+  "region": "us-central1"
+}
+```
+
+**Request Body Fields:**
+- `region` (optional) - GCP region (default: `us-central1`)
+
+**Note:** `accountName` is not required here. It will be requested when completing the connection via the `/complete` endpoint.
+
+**Permissions:**
+- User must be a member of the workspace
+- User must have `canManageResources` permission
+- Workspace must not exceed the plan's `max_cloud_connections` limit
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/cloud-connections/my-workspace/connect-gcp \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "region": "us-central1"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": "GCP connection initiated",
+  "data": {
+    "connectionId": 2,
+    "connectionUrl": "https://shell.cloud.google.com/cloudshell/editor?show=terminal",
+    "setupCommand": "curl -sSL gws.run/g | sh",
+    "setupScriptUrl": "https://gws.run/g",
+    "wifCommand": "curl -sSL gws.run/g | sh",
+    "wifScriptUrl": "https://gws.run/g",
+    "region": "us-central1",
+    "status": "pending"
+  }
+}
+```
+
+**Note:** `connectionUrl` opens Cloud Shell (terminal); users run `setupCommand` (`curl -sSL gws.run/g | bash` or `GCP_WIF_SCRIPT_URL` / `GCP_SETUP_SCRIPT_URL`).
+
+**Setup Script Features:**
+
+The setup script automatically:
+- ✅ Creates a service account named `gateways-cloud-connection`
+- ✅ Grants the following IAM roles:
+  - `roles/compute.admin` - Compute Engine Admin (VMs, disks, networking)
+  - `roles/storage.admin` - Storage Admin (Cloud Storage)
+  - `roles/cloudsql.admin` - Cloud SQL Admin (databases)
+  - `roles/iam.serviceAccountUser` - Service Account User
+  - `roles/compute.networkAdmin` - Network Admin (VPC, firewall, load balancers)
+  - `roles/viewer` - Project Viewer
+  - `roles/dns.admin` - DNS Admin
+  - `roles/cloudfunctions.admin` - Cloud Functions Admin
+  - `roles/run.admin` - Cloud Run Admin
+  - `roles/secretmanager.admin` - Secret Manager Admin
+  - `roles/redis.admin` - Memorystore for Redis Admin (cache servers)
+- ✅ Enables required GCP APIs (Compute, Cloud SQL, Memorystore for Redis `redis.googleapis.com`, etc.)
+- ✅ Generates and downloads the service account key JSON file
+- ✅ Provides connection details including project ID and service account email
+
+#### Complete Cloud Connection (GCP)
+
+To complete a GCP connection, use the same `/complete` endpoint but provide GCP-specific fields:
+
+**POST /api/cloud-connections/:workspaceSlug/:connectionId/complete**
+
+Complete a pending GCP connection by providing the Workload Identity Federation (WIF) config. In Google Cloud Shell, run `export GCP_OIDC_ISSUER_URL=<your-api>/api` then `curl -sSL gws.run/g | sh` (or your self-hosted script if configured), and paste the JSON or Base64 output. No service account keys are used.
+
+**Path Parameters:**
+- `workspaceSlug` - The slug of the workspace
+- `connectionId` - The ID of the connection to complete
+
+**Request Body (for GCP):**
+```json
+{
+  "projectId": "my-gcp-project-12345",
+  "accountName": "Production GCP",
+  "wifConfig": {
+    "projectId": "my-gcp-project-12345",
+    "projectNumber": "123456789012",
+    "poolId": "gateways-pool",
+    "providerId": "gateways-provider",
+    "serviceAccountEmail": "gateways-sa@my-gcp-project.iam.gserviceaccount.com"
+  }
+}
+```
+
+**Request Body Fields (for GCP):**
+- `projectId` (optional if in wifConfig) - The GCP project ID
+- `accountName` (required) - A friendly name to identify this GCP account connection (must be unique within the workspace)
+- `wifConfig` (required) - JSON or Base64-encoded JSON with `projectNumber`, `poolId`, `providerId`, `serviceAccountEmail` (and optionally `projectId`)
+
+**Note:** 
+- `accountName` must be unique within the workspace. If a connection with the same `accountName` already exists, the request will fail with a duplicate account name error.
+- The `wifConfig` can be provided as JSON object/string or Base64-encoded JSON (as generated by the setup script).
+- Before marking the connection as complete, the endpoint will test the GCP connection. If the test fails, the connection status will be set to `failed` and an error will be returned.
+
+**Permissions:**
+- User must be a member of the workspace
+- User must have `canManageResources` permission
+- Connection must belong to the specified workspace
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/cloud-connections/my-workspace/2/complete \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "my-gcp-project-12345",
+    "accountName": "Production GCP",
+    "wifConfig": "{\"projectNumber\":\"123456789012\",\"poolId\":\"gateways-pool\",\"providerId\":\"gateways-provider\",\"serviceAccountEmail\":\"gateways-sa@my-gcp-project.iam.gserviceaccount.com\"}"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": "Cloud connection completed successfully",
+  "data": {
+    "id": 2,
+    "cloudProvider": {
+      "id": 2,
+      "name": "gcp",
+      "displayName": "Google Cloud Platform"
+    },
+    "accountId": "my-gcp-project-12345",
+    "accountName": "Production GCP",
+    "region": "us-central1",
+    "connectionStatus": "connected",
+    "connectedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### Connect Azure Account
+
+**POST /api/cloud-connections/:workspaceSlug/connect-azure**
+
+Initiate an Azure connection by creating a pending connection. Returns **Azure Cloud Shell** URL and a short **setup command** like `$env:T="<token>"; curl -sSL gws.run/a | sh` (PowerShell) where `T` is a 24-character hex one-time token. The script POSTs credentials to **`https://api.gateways.app/api/cloud-connections/azure-setup-callback`** (override webhook in Cloud Shell with `$env:W=...` before the curl line if needed). After the user sets `accountName` via PATCH and runs the command, **`POST /api/cloud-connections/azure-setup-callback`** accepts the body (no JWT). Manual **`/complete`** with `azureCredentials` still works.
+
+**Path Parameters:**
+- `workspaceSlug` - The slug of the workspace
+
+**Request Body:**
+```json
+{ "region": "eastus" }
+```
+- `region` (optional) - Default `eastus`. Used as the default region for resources.
+
+**Example:**
+```bash
+curl -X POST https://api.gateways.app/api/cloud-connections/my-workspace/connect-azure \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "region": "eastus"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": "Azure connection initiated",
+  "data": {
+    "connectionId": 3,
+    "connectionUrl": "https://shell.azure.com",
+    "setupCommand": "$env:T=\"<24-char-hex>\"; curl -sSL gws.run/a | sh",
+    "setupScriptUrl": "https://gws.run/a",
+    "region": "eastus",
+    "status": "pending"
+  }
+}
+```
+
+**Complete Azure connection (automatic):** Run the `setupCommand` in Cloud Shell after PATCHing `accountName`. **Manual:** Use the same `POST .../complete` endpoint with:
+- `accountName` (required)
+- `azureCredentials` (required) - The JSON or Base64 block from the setup script: `{ "tenantId", "subscriptionId", "clientId", "clientSecret" }`. Alternatively pass `tenantId`, `subscriptionId`, `clientId`, `clientSecret` individually.
+
+#### Update Cloud Connection
+
+**PATCH /api/cloud-connections/:workspaceSlug/:connectionId**
+
+Update a cloud connection (e.g. display name / account name).
+
+**Path Parameters:**
+- `workspaceSlug` - The slug of the workspace
+- `connectionId` - The ID of the connection to update
+
+**Request Body:**
+- `accountName` (optional, string) - Display name for the connection. Pass empty string or omit to clear.
+
+**Permissions:**
+- User must be a member of the workspace
+- User must have `canManageResources` permission
+- Connection must belong to the specified workspace
+
+**Example:**
+```bash
+curl -X PATCH https://api.gateways.app/api/cloud-connections/my-workspace/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"accountName": "Production AWS"}'
+```
+
+**Response:**
+```json
+{
+  "message": "Cloud connection updated successfully",
+  "data": {
+    "id": 1,
+    "accountName": "Production AWS",
+    "accountId": "123456789012",
+    "region": "us-east-1",
+    "connectionStatus": "connected",
+    "updatedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+#### Delete Cloud Connection
+
+**DELETE /api/cloud-connections/:workspaceSlug/:connectionId**
+
+Delete (soft delete) a cloud connection. The connection will be marked as inactive and disconnected.
+
+**Path Parameters:**
+- `workspaceSlug` - The slug of the workspace
+- `connectionId` - The ID of the connection to delete
+
+**Precondition:**
+- Every project in the workspace that is linked to this cloud connection (`connected_cloud_id` = `connectionId`) must have **zero active resources**. If any such project still has active resources, the request fails with `409 Conflict` and a message listing the project(s) that must be cleared first.
+
+**Permissions:**
+- User must be a member of the workspace
+- User must have `canManageResources` permission
+- Connection must belong to the specified workspace
+
+**Example:**
+```bash
+curl -X DELETE https://api.gateways.app/api/cloud-connections/my-workspace/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error response (409) when projects still have active resources:**
+```json
+{
+  "error": "Cannot delete connection",
+  "message": "All projects using this cloud connection must have zero active resources before deletion. The following project(s) still have active resources: My Project, Other Project. Delete or disconnect all resources in those projects first, then try again."
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Cloud connection deleted successfully"
+}
+```
+
+### Cloud Provider Connection Endpoints (Project-Level)
+
+Projects can be linked to a workspace's cloud connection:
+
+- `PATCH /api/projects/:projectSlug/connect-cloud/:connectionId` - Link a workspace cloud connection to a project
+- `PATCH /api/projects/:projectSlug/disconnect-cloud` - Unlink the cloud connection from a project. **Allowed only when the project has zero active resources**; otherwise returns `409` with a message to delete resources first.
+
+**Note:** To connect cloud providers, use the workspace-level `/api/cloud-connections/:workspaceSlug` endpoints. Then link the connection to your project using `/api/projects/:projectSlug/connect-cloud/:connectionId`.

@@ -1,0 +1,31 @@
+---
+title: "Runtime: Application servers"
+description: Optional application server stack selection for Python, PHP, .NET, and Perl runtimes in the runtime configuration panel.
+---
+
+For some **language families** only, the configuration panel shows a second row: **Application server**. This is **not** a separate Create submenu—it appears **after** you select a **family** that has server options defined in the product.
+
+## When it appears
+
+**Application server** choices are shown only if the selected family has at least one option. In the console, built-in mappings include:
+
+| Family | Options (key → label) |
+| --- | --- |
+| **Python** | **Uvicorn**, **Gunicorn** |
+| **PHP** | **PHP-FPM** (`php-fpm-caddy`) |
+| **.NET** | **Kestrel** |
+| **Perl** | **Starman** |
+
+Families such as **Node.js**, **Go**, **Deno**, and **Bun** use the **version** dropdown only; they do **not** show this application-server row in the current UI (no entries in the internal `APP_SERVERS` map for those keys).
+
+## Behavior
+
+- Choosing a server sets **`applicationServer`** on the runtime resource (string key such as `uvicorn`, `gunicorn`).
+- Help text under the row describes it as the application server for that **runtime family** (for example “Application server for Python runtime”).
+- Logos for server types use the same icon set as elsewhere in the panel when available.
+
+## API
+
+Server stacks available per language can also be queried with **`GET /api/runtimes/servers?runtimeName=...`** (see **[Runtimes API](/api/28-runtimes)** in the bundled API docs). Use that for automation or to confirm options beyond what this guide lists.
+
+[← Runtime overview](/gateways/resources/runtime) · [Families and versions](/gateways/resources/runtime/families-and-versions)

@@ -1,0 +1,34 @@
+---
+title: Firewall
+description: Network security rules—API subtype firewall; inbound and outbound rules in the panel.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | **Network security rules** (security groups, NSG rules, firewall policies—provider-dependent). |
+| **Create menu** | “Create a firewall rule.” |
+| **API subtype** | `firewall`. |
+| **Panel** | **`FirewallConfigurationPanel`** — **region**, **inbound** and **outbound** rule lists, **protocol** presets (HTTP, HTTPS, SSH, databases, etc.), **source** (Anywhere or custom IP), and related fields. |
+
+## Configuration (typical)
+
+- **Name** and **region** — Scope the rule set to a cloud region where your VPC/network lives.
+- **Rules** — Structured as **inbound** and **outbound** arrays; each rule can use a **preset protocol** (for example HTTP on port 80, HTTPS on 443, MySQL on 3306) or **custom TCP/UDP** with an explicit port, plus **ICMP** or **All** where supported.
+- **Source / destination** — Often **Anywhere** or a **custom CIDR** for fine-grained access.
+
+The UI groups protocols into categories (Web, Remote access, Database, Network services, DevOps, and so on) so you do not have to remember port numbers for common services.
+
+## Canvas and connections
+
+- Attach **firewalls** to **servers**, **scalable servers**, or other network-facing resources your deployment allows—so traffic paths reflect real security boundaries.
+
+## Operations
+
+- **Sync** refreshes rule state from the provider when supported.
+- **Delete** removes the firewall resource and associated cloud objects per API behavior.
+
+**API:** [API documentation](/api/index) → **Firewalls**, **Resources**, **Resource connections**.
+
+[← Resource types hub](/gateways/resources)

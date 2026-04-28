@@ -1,0 +1,264 @@
+---
+title: "14-bucket-explorers"
+description: "HTTP API: 14-bucket-explorers"
+---
+
+### Bucket Explorer Management Endpoints
+
+> Note: Utility resources (terminals, bucket explorers, db monitors) share common patterns. See `11-utility-resources.md` for a consolidated overview; this file focuses on bucket-explorer specifics.
+
+Bucket explorers are resources that can be connected to storage buckets to browse and explore their contents. Similar to terminals that connect to instances, bucket explorers provide a way to interact with S3 buckets.
+
+#### Create Bucket Explorer
+- `POST /api/:projectSlug/:environmentSlug/bucket-explorers` - Create a new bucket explorer resource and S3 storage bucket
+
+**Description:** The `name` provided will be used directly as the S3 bucket name. The endpoint will automatically create the S3 bucket and connect it to the bucket explorer.
+
+**Important:** 
+- The name must be a valid S3 bucket name (3-63 characters, lowercase, alphanumeric, hyphens, periods)
+- Bucket names must be globally unique across all AWS accounts
+- The endpoint will automatically create the S3 bucket and connect it to the bucket explorer
+
+**Request Body:**
+```json
+{
+  "name": "my-bucket-name",  // Will be used as S3 bucket name (must follow AWS S3 naming rules)
+  "region": "us-east-1",     // Optional, defaults to connection region
+  "positionX": 100,          // Optional, canvas X coordinate
+  "positionY": 200           // Optional, canvas Y coordinate
+}
+```
+
+**S3 Bucket Naming Rules:**
+- Must be 3 to 63 characters long
+- Must begin and end with a letter or number
+- Can contain lowercase letters (a-z), numbers (0-9), periods (.), and hyphens (-)
+- Cannot contain consecutive periods (..)
+- Cannot be formatted as an IP address (e.g., 192.168.1.1)
+- Cannot start with "xn--" or end with "-s3alias"
+- Must be globally unique across all AWS accounts
+
+**Example:**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/bucket-explorers" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-bucket-name",
+    "region": "us-east-1",
+    "positionX": 300,
+    "positionY": 400
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Bucket explorer and S3 bucket created successfully",
+  "data": {
+    "id": 1,
+    "name": "my-bucket-name",
+    "bucketName": "my-bucket-name",
+    "status": "inactive",
+    "position": {
+      "x": 300,
+      "y": 400
+    },
+    "storageBucket": {
+      "id": 1,
+      "name": "my-bucket-name",
+      "awsBucketName": "my-bucket-name",
+      "region": "us-east-1"
+    },
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "master"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Response (Invalid bucket name):**
+```json
+{
+  "error": "Invalid bucket name",
+  "message": "Bucket name must be at least 3 characters long"
+}
+```
+
+**Error Response (Bucket already exists):**
+```json
+{
+  "error": "Bucket name already exists",
+  "message": "A bucket with name \"my-bucket-name\" already exists in AWS. Bucket names must be globally unique."
+}
+```
+
+#### List Bucket Explorers
+- `GET /api/:projectSlug/:environmentSlug/bucket-explorers` - List all bucket explorers for a project environment
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/bucket-explorers" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Bucket explorers retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "My Bucket Explorer",
+      "status": "inactive",
+      "position": {
+        "x": 300,
+        "y": 400
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "Backup Explorer",
+      "status": "active",
+      "position": {
+        "x": 500,
+        "y": 600
+      },
+      "createdAt": "2024-01-15T11:00:00.000Z",
+      "updatedAt": "2024-01-15T11:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### Get Bucket Explorer Details
+- `GET /api/:projectSlug/:environmentSlug/bucket-explorers/:explorerId` - Get details of a specific bucket explorer
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/bucket-explorers/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Bucket explorer retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "My Bucket Explorer",
+    "status": "inactive",
+    "position": {
+      "x": 300,
+      "y": 400
+    },
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "master"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### Update Bucket Explorer
+- `PATCH /api/:projectSlug/:environmentSlug/bucket-explorers/:explorerId` - Update a bucket explorer
+
+**Request Body:**
+```json
+{
+  "name": "Updated Explorer Name",  // Optional
+  "status": "active",  // Optional: active, inactive, connecting, error
+  "positionX": 350,  // Optional
+  "positionY": 450   // Optional
+}
+```
+
+**Example:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/codepanel/master/bucket-explorers/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Explorer Name",
+    "status": "active",
+    "positionX": 350,
+    "positionY": 450
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Bucket explorer updated successfully",
+  "data": {
+    "id": 1,
+    "name": "Updated Explorer Name",
+    "status": "active",
+    "position": {
+      "x": 350,
+      "y": 450
+    },
+    "updatedAt": "2024-01-15T12:00:00.000Z"
+  }
+}
+```
+
+#### Delete Bucket Explorer
+
+Bucket explorer deletion is performed **only** via the unified resources API:
+
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+Use the bucket explorer's **database ID**. The service removes all resource connections, then soft-deletes the resource. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id).
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Connecting Bucket Explorers to Storage Buckets
+
+Bucket explorers can be connected to storage buckets using the Resource Connections API. This allows the bucket explorer to browse and interact with the contents of the connected storage bucket.
+
+**Example: Connect bucket explorer to a storage bucket**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/resource-connections" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sourceResourceType": "bucket_explorer",
+    "sourceResourceId": 1,
+    "targetResourceType": "storage_bucket",
+    "targetResourceId": 1
+  }'
+```
+
+See the [Resource Connections](/api/07-resource-connections) documentation for more details on connecting resources.
+
+#### Status Values
+
+Bucket explorers have the following status values:
+- `inactive` - Default status when created
+- `active` - Explorer is active and connected
+- `connecting` - Currently establishing connection
+- `error` - Connection error occurred
+

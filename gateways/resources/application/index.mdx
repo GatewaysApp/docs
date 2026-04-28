@@ -1,0 +1,26 @@
+---
+title: Application
+description: Deploy workloads from upload, Git, or Docker—API subtype application and five source types in Create.
+---
+
+| | |
+| --- | --- |
+| **Purpose** | **Application** resources represent deployable workloads on your cloud (build from source or run a container). |
+| **API subtype** | Always `application`. The **Create submenu** choice is stored as **`uploadType`** / **application type** (for example `upload-app`, `github-repo`, `docker-image`). |
+| **Create flow** | Choose **Application** in Create → a **submenu** opens with five source types. Each opens a different configuration panel. |
+
+## Submenu → documentation
+
+| Create option | Console id | Read |
+| --- | --- | --- |
+| Upload app | `upload-app` | [Upload app & build commands](/gateways/resources/application/upload-and-build) |
+| GitHub repo | `github-repo` | [Git repositories](/gateways/resources/application/git-repositories) |
+| GitLab repo | `gitlab-repo` | [Git repositories](/gateways/resources/application/git-repositories) |
+| Bitbucket repo | `bitbucket-repo` | [Git repositories](/gateways/resources/application/git-repositories) |
+| Docker image | `docker-image` | [Docker image](/gateways/resources/application/docker-image) |
+
+See **[Application sources](/gateways/resources/application/sources)** for a side-by-side comparison of all five, then open the guide that matches how you deploy.
+
+**Shared behavior:** Panels include **runtime selection**, **install/run commands** (with defaults per language), **environment variables**, and deploy actions. Applications often **connect** to **databases**, **functions**, and other resources—see **[Canvas and operations](/gateways/resources/application/canvas-and-operations)**.
+
+[← Resource types hub](/gateways/resources)

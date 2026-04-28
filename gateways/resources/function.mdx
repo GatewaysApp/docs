@@ -1,0 +1,33 @@
+---
+title: Function
+description: Serverless functions—API subtype function; runtime, architecture, handler, and region in the panel.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | **Serverless functions** (Lambda, Cloud Functions, Azure Functions). |
+| **Create menu** | “Create a serverless Lambda function” on AWS-flavored deployments. |
+| **API subtype** | `function`. |
+| **Panel** | **`FunctionConfigurationPanel`** — **name**, **region**, **runtime** (language family), **architecture** (for example **x86_64**), **handler** entrypoint (defaults like `index.handler`), optional **description**, plus **simple** vs **advanced** setup paths and **environment variables** (values may be masked in the UI). |
+
+## Configuration (typical)
+
+- **Runtime** — Language/runtime family appropriate to your cloud (Node, Python, etc., as offered by the project).
+- **Architecture** — Aligns with **arm64** vs **x86_64** offerings per provider.
+- **Handler** — Function entry; Azure/GCP defaults in code mirror common patterns (`index.handler`).
+- **Environment** — Key/value env vars for configuration and secrets (treat as sensitive).
+
+## Canvas and connections
+
+- Connect to **API gateways**, **queues**, **databases**, **storage**, or **applications** where your deployment’s **resource connections** allow it.
+
+## Operations
+
+- **Deploy / update** pushes code and configuration through the platform’s function APIs.
+- **Delete** removes the function and related triggers when configured.
+
+**API:** [API documentation](/api/index) → **Functions**, **Resources**.
+
+[← Resource types hub](/gateways/resources)

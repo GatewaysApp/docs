@@ -1,0 +1,31 @@
+---
+title: Cache server
+description: Managed cache tiers—API subtype cache_server; engine and instance type in the panel.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | **Managed cache** tier (for example ElastiCache, Memorystore, Azure Cache). |
+| **Create menu** | May reference **serverless ElastiCache** or provider-specific cache products. |
+| **API subtype** | `cache_server`. |
+| **Panel** | **`CacheServerConfigurationPanel`** — **name**, **cache engine** (for example **Redis**, **Memcached**, **Valkey** with engine-specific icons), **engine version**, **region**, and **instance type**; loads versions and instance types from the project’s cache APIs. |
+
+## Configuration (typical)
+
+- **Engine** — Pick the protocol you need (Redis-compatible vs Memcached, etc.); **version** and **instance class** lists depend on region and provider.
+- **Region** — Same region list pattern as other regional services.
+
+## Canvas and connections
+
+- Connect **applications**, **functions**, and **servers** that need fast reads/writes in front of [databases](/gateways/resources/database) or APIs.
+
+## Operations
+
+- **Sync** refreshes cluster status and endpoints when supported.
+- **Delete** tears down the cache and any replication groups per cloud behavior.
+
+**API:** [API documentation](/api/index) → **Cache**, **Resources**, **Resource connections**.
+
+[← Resource types hub](/gateways/resources)

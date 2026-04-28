@@ -1,0 +1,47 @@
+---
+title: Database
+description: Managed databases—engine submenu, configuration panel, API subtype database.
+---
+
+## Summary
+
+| | |
+| --- | --- |
+| **Purpose** | **Managed relational databases** (RDS-style, Cloud SQL, Azure Database, etc.—provider-dependent). |
+| **Create menu** | “Create a database instance” → **engine submenu** (see below). |
+| **API subtype** | `database` for all engines; **engine** and **engine version** live in resource metadata. |
+| **Panel** | **`DatabaseConfigurationPanel`** — engine-specific branding (Aurora, MySQL, PostgreSQL, MariaDB icons), **region**, **instance class** grid with pricing where available, **storage**, **Multi-AZ**, credentials, and other provider fields. |
+
+## Engine submenu (Create)
+
+| Engine | Notes |
+| --- | --- |
+| **Aurora (MySQL compatible)** | AWS Aurora MySQL–compatible. |
+| **Aurora (PostgreSQL compatible)** | AWS Aurora PostgreSQL–compatible. |
+| **MySQL** | Standalone MySQL-compatible. |
+| **PostgreSQL** | Standalone PostgreSQL. |
+| **MariaDB** | MariaDB. |
+
+**GCP and Azure:** The Create submenu typically shows only **MySQL** and **PostgreSQL**; Aurora and MariaDB entries are **hidden** because they are AWS-specific in the current UI.
+
+## Configuration (typical)
+
+- **Name**, **region**, **engine / version** — Drives which **instance classes** and **pricing** rows appear.
+- **Instance class** — Searchable grid with families and sizes; **On-Demand** pricing used for sorting when pricing metadata exists.
+- **Storage** — Allocated size and sometimes IOPS / throughput tiers per engine.
+- **Multi-AZ** — High-availability deployment where the provider supports it (affects pricing selection in the panel).
+- **Master password** — Collected for new databases (masked in UI); treat as sensitive.
+
+## Canvas and connections
+
+- Connect **applications** and **functions** via **resource connections** or connection strings in app configuration.
+- Pair with [DB monitoring](/gateways/resources/utilities) under Utilities for metrics where enabled.
+
+## Operations
+
+- **Sync from cloud** refreshes status from the provider (see unified resources sync).
+- **Delete** uses the unified delete path; may require teardown order (snapshots, subnets) per cloud.
+
+**API:** [API documentation](/api/index) → **Databases**, **Resources**.
+
+[← Resource types hub](/gateways/resources)

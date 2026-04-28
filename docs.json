@@ -1,0 +1,205 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Gateways",
+  "colors": {
+    "primary": "#3b82f6",
+    "light": "#60a5fa",
+    "dark": "#2563eb"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "favicon": "/images/favicon.png",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Platform",
+            "pages": [
+              "index",
+              "gateways/overview",
+              "gateways/create-account"
+            ]
+          },
+          {
+            "group": "CLI",
+            "pages": [
+              "gateways/cli/index",
+              {
+                "group": "Get started",
+                "pages": [
+                  "gateways/cli/install",
+                  "gateways/cli/project-file"
+                ]
+              },
+              "gateways/cli/commands"
+            ]
+          },
+          {
+            "group": "Compare",
+            "pages": [
+              "platform/index",
+              "platform/compare-to-vercel",
+              "platform/compare-to-render",
+              "platform/compare-to-fly-io",
+              "platform/compare-to-heroku",
+              "platform/compare-to-railway"
+            ]
+          },
+          {
+            "group": "Console",
+            "pages": [
+              "gateways/navigation",
+              "gateways/canvas",
+              "gateways/activity-and-project-settings",
+              "gateways/account",
+              "gateways/troubleshooting"
+            ]
+          },
+          {
+            "group": "Resource types",
+            "pages": [
+              "gateways/resources/index",
+              "gateways/resources/server",
+              "gateways/resources/scalable-server",
+              {
+                "group": "Runtime",
+                "pages": [
+                  "gateways/resources/runtime/index",
+                  "gateways/resources/runtime/families-and-versions",
+                  "gateways/resources/runtime/application-servers",
+                  "gateways/resources/runtime/canvas-and-connections"
+                ]
+              },
+              {
+                "group": "Application",
+                "pages": [
+                  "gateways/resources/application/index",
+                  "gateways/resources/application/sources",
+                  "gateways/resources/application/upload-and-build",
+                  "gateways/resources/application/git-repositories",
+                  "gateways/resources/application/docker-image",
+                  "gateways/resources/application/canvas-and-operations"
+                ]
+              },
+              "gateways/resources/database",
+              "gateways/resources/utilities",
+              "gateways/resources/firewall",
+              "gateways/resources/dns",
+              "gateways/resources/storage-bucket",
+              "gateways/resources/static-website",
+              "gateways/resources/cache-server",
+              "gateways/resources/function",
+              "gateways/resources/connections"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/introduction",
+              "api/index"
+            ]
+          },
+          {
+            "group": "Authentication & access",
+            "pages": [
+              "api/00-authentication-access",
+              "api/01-authentication"
+            ]
+          },
+          {
+            "group": "Projects & cloud",
+            "pages": [
+              "api/02-projects-environments",
+              "api/03-cloud-connections"
+            ]
+          },
+          {
+            "group": "Resources & applications",
+            "pages": [
+              "api/04-servers-instances",
+              "api/05-resources",
+              "api/06-applications",
+              "api/07-resource-connections",
+              "api/08-firewalls",
+              "api/09-storage-buckets",
+              "api/10-resource-positions",
+              "api/11-utility-resources",
+              "api/14-bucket-explorers",
+              "api/15-bucket-files",
+              "api/16-static-websites"
+            ]
+          },
+          {
+            "group": "Infrastructure & catalog",
+            "pages": [
+              "api/12-cloud-infrastructure",
+              "api/13-legacy"
+            ]
+          },
+          {
+            "group": "Data & compute",
+            "pages": [
+              "api/18-databases",
+              "api/19-cache-servers",
+              "api/21-functions"
+            ]
+          },
+          {
+            "group": "Activity, plans & workspaces",
+            "pages": [
+              "api/22-activities",
+              "api/23-pricing-plans",
+              "api/24-workspaces",
+              "api/25-payments"
+            ]
+          },
+          {
+            "group": "DNS & scaling",
+            "pages": [
+              "api/25-dns",
+              "api/26-subdomains",
+              "api/27-scalable-servers",
+              "api/28-runtimes"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": []
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [],
+    "primary": {
+      "type": "button",
+      "label": "Open Gateways",
+      "href": "https://console.gateways.app/login"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  }
+}

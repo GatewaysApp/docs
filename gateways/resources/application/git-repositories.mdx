@@ -1,0 +1,30 @@
+---
+title: "Application: Git repositories"
+description: GitHub, GitLab, and Bitbucket application flows—repo selection, connections, branch, runtime, and deploy.
+---
+
+**Create paths:** **Application** → **GitHub repo**, **GitLab repo**, or **Bitbucket repo** (`github-repo`, `gitlab-repo`, `bitbucket-repo`).
+
+## Provider-specific panel
+
+Each provider opens **GitConfigurationPanel** with branding and URL patterns appropriate to that host (for example `github.com`, `gitlab.com`, `bitbucket.org`). You typically:
+
+1. **Link a Git account** (OAuth or token-based **connection**) if not already connected—so the console can list **organizations** and **repositories**.
+2. **Pick owner/org and repository** from browse UI or paste a **repository URL** matching the provider’s pattern.
+3. Choose **branch** (defaults such as `main` are provider-aware).
+4. Select **runtime** and **application server** (same ideas as [Upload app & build](/gateways/resources/application/upload-and-build)).
+5. Configure **install/run commands**—defaults match the same **DEFAULT_COMMANDS** matrix as upload (Node, Python + Uvicorn/Gunicorn, Go, PHP, .NET, Perl, Bun, Deno).
+6. Set **environment variables** as needed.
+7. **Deploy** to create/update the application resource and trigger the deployment pipeline.
+
+## Connections and identity
+
+- The UI may show **Git connection** avatars, usernames, and org membership as returned by the API.
+- Repository lists and permissions depend on the **linked connection** and your provider role.
+
+## Notes
+
+- **Self-hosted** GitLab or enterprise GitHub may work if your backend integrates them; URLs and connection types follow your deployment’s configuration.
+- Behavior details (webhooks, CI, rebuild on push) depend on platform implementation—refer to **[API documentation](/api/index)** → **Applications** for endpoint-level behavior.
+
+[← Application overview](/gateways/resources/application) · [Application sources](/gateways/resources/application/sources)

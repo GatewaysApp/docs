@@ -1,0 +1,29 @@
+---
+title: "Application: Upload app & build commands"
+description: Upload-app panel—artifact, runtime, install/run commands, environment variables, reverse proxy.
+---
+
+**Create path:** **Application** → **Upload app** (`upload-app`).
+
+## What you provide
+
+- **Name** and optional **description** for the application resource on the canvas.
+- **Artifact:** A **zip** archive or **folder** upload (drag-and-drop supported). The UI validates archive shape where applicable.
+- **Runtime:** Selected via the same **runtime catalog** pattern as other flows (`RuntimeSelector`)—choose a **language** and **version** from `GET /api/runtimes` (subject to the application runtime filter).
+- **Application server** (when applicable): For some languages (for example Python with **Uvicorn** / **Gunicorn**), pick the stack that matches how you run the app.
+- **Build commands:** An ordered list of **install** and **run** steps. The product ships **defaults** per runtime family, for example:
+  - **Node:** `npm install` → `npm start`
+  - **Python:** `pip install -r requirements.txt` → `python app.py` (with **Uvicorn** / **Gunicorn** variants when that server is selected)
+  - **Go, PHP, .NET, Perl, Bun, Deno:** Similar opinionated defaults—you can edit or add steps.
+- **Environment variables:** Key/value list (optional JSON paste for bulk entry). Sensitive values may be **locked** from casual display after save, depending on UI behavior.
+- **Reverse proxy:** Option (default on in the upload flow where shown) to place the app behind the platform’s reverse-proxy pattern for HTTP.
+
+## Deploy
+
+Submitting runs the platform’s **deploy** pipeline for upload-based apps (build on target, sync files, run commands). While deployment runs, panels typically **hide** or show a **deploying** state tied to the card.
+
+## Related
+
+- Runtime catalog overlaps with **[Runtime](/gateways/resources/runtime)** resources, but here the runtime drives **how your uploaded code is built and started**, not a separate “runtime card” unless you also add one.
+
+[← Application overview](/gateways/resources/application) · [Application sources](/gateways/resources/application/sources)

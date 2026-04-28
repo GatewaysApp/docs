@@ -1,0 +1,42 @@
+---
+title: Introduction
+description: The Gateways CLI for sign-in, project linking, push, deploy, and SSH from your terminal.
+---
+
+The **Gateways CLI** (`gateways`, also installed as `gws-cli`) talks to the Gateways API: sign in, attach a local folder to a **project** and **environment**, push **upload-type** applications and **static** sites, and open **SSH** to instances.
+
+## API base URL
+
+In this repository, the CLI uses a **fixed** API base URL: `http://localhost:3033` (see `DefaultAPIURL` in the CLI source). It is **not** overridden by environment variables in the open-source tree. Use a build and installer that match the Gateways API you target (for example local backend vs hosted). Run `gateways config` to confirm where credentials are stored.
+
+## Quick start
+
+From your app directory:
+
+```bash
+gateways init my-app/production
+gateways login
+```
+
+`init` writes **`.gateways.yaml`** with `project` and `environment` slugs. You must be signed in; the CLI checks that the project and environment exist and that you have access. If the file already exists, `init` updates **project** and **environment** (and optional **path**); other fields are preserved. Remove the file with `gateways reset`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Install" icon="download" href="/gateways/cli/install">
+    macOS, Linux, Windows, checkout, and build from source.
+  </Card>
+  <Card title="Project file" icon="file-code" href="/gateways/cli/project-file">
+    `.gateways.yaml` fields for path, push target, commands, and ignores.
+  </Card>
+  <Card title="Command reference" icon="terminal" href="/gateways/cli/commands">
+    Full command reference: `push`, `deploy`, `connect`, and more.
+  </Card>
+</CardGroup>
+
+## Related
+
+- **[REST API](/api/index)** — Endpoints the CLI calls.
+- **[Console overview](/gateways/overview)** — Project and environment slugs match `/{project}/{environment}` in the browser.
+
+For release artifacts and ignore-pattern details, see **`cli/README.md`** in the Gateways repository.

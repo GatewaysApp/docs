@@ -1,0 +1,23 @@
+---
+title: Project file
+description: Fields in .gateways.yaml for project, environment, uploads, and deploy commands.
+---
+
+The CLI reads **`./.gateways.yaml`** in your working directory. Create or update it with `gateways init`.
+
+## Common fields
+
+| Field | Purpose |
+| --- | --- |
+| `project` / `environment` | Slugs for the Gateways project and environment. |
+| `email` | Optional: pin this folder to a Gateways user; tokens are stored per email in `~/.config/gateways/config.json`. |
+| `path` | Default directory for uploads (override with `gateways push --path`). |
+| `push_resource` | Last-used push target (`resource-…` or id); set by `gateways push` or `gateways resource`. |
+| `start_commands` | Lines run on the server after an upload deploy (e.g. `npm ci`, `npm start`). |
+| `ignore` | Glob patterns excluded from zips and static uploads (see **`cli/README.md`** in the repo for pattern rules). |
+| `bucket_explorer_id` / `static_website_id` | Used for static deploy and CDN sync flows. |
+
+## Related
+
+- **[Commands](/gateways/cli/commands)** — `init`, `reset`, `push`, `resource`, and flags.
+- **[Introduction](/gateways/cli)** — Quick start with `gateways init` and `gateways login`.

@@ -1,0 +1,46 @@
+---
+title: "Runtime: Families and versions"
+description: Language family selector and version dropdown in the runtime configuration panel; runtime catalog API.
+---
+
+In the **Create Runtime** / **Runtime Settings** panel, the **Runtime** section is a horizontal strip of **language families**. Each family is a column with:
+
+1. **Family button** — Icon and label (for example **Node.js**, **Python**, **Go**).
+2. **Version control** — When that family is selected, a **dropdown** lists every **version** row returned from the platform **runtimes** catalog for that family.
+
+## Where the list comes from
+
+- The console calls **`GET /api/runtimes`** and applies a filter so only runtimes intended for this workflow appear (certain language stacks used only elsewhere may be omitted).
+- Each row in the database has an **id**, **name** (family key such as `node`, `python`, `go`), **version**, and **display name**.
+
+## Family display names (UI)
+
+The panel maps internal family keys to labels such as:
+
+| Key (typical) | Shown as |
+| --- | --- |
+| `node` | Node.js |
+| `python` | Python |
+| `go` | Go |
+| `php` | PHP |
+| `dotnet` | .NET |
+| `perl` | Perl |
+| `deno` | Deno |
+| `bun` | Bun |
+
+Additional families may appear if your deployment’s **runtimes** table includes them and they pass the console filter.
+
+## Version selection
+
+- Versions are **per family**: selecting **Python** shows only Python rows, sorted so newer versions tend to appear first.
+- The selected row sets **`runtimeId`** (numeric id from the API), plus **`runtimeName`**, **`runtimeVersion`**, and **`runtimeDisplayName`** on the resource.
+
+## Name field
+
+Above the family strip, **Name** is the **display name for the runtime card** on the architecture canvas (for example `runtime-prod`).
+
+Help text under the version selector explains that installation and removal follow the flow appropriate for the **OS family you selected** (whatever your platform defines for that runtime).
+
+For HTTP details, see **[API documentation](/api/index)** → **Runtimes** (`GET /api/runtimes`, `POST .../runtimes`, etc.).
+
+[← Runtime overview](/gateways/resources/runtime) · [Resource types hub](/gateways/resources)

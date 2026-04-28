@@ -1,0 +1,91 @@
+---
+title: "10-resource-positions"
+description: "HTTP API: 10-resource-positions"
+---
+
+### Resource Positions (Canvas/Draggable Cards)
+
+Resources (instances, applications, databases, firewalls, terminals, storage buckets, bucket explorers, db monitors) can be positioned on a canvas for drag-and-drop interfaces (like n8n). Position data is automatically included in all resource listing and detail endpoints.
+
+#### Update Resource Position
+- `PATCH /api/:projectSlug/:environmentSlug/resources/:resourceId/position` - Update the position of a resource on the canvas (use resource’s database ID)
+
+**Request Body:**
+```json
+{
+  "x": 520,
+  "y": 150
+}
+```
+
+**Example:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/codepanel/master1/resources/123/position" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"x": 520, "y": 150}'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Resource position updated successfully",
+  "data": {
+    "id": 1,
+    "resourceType": "instance",
+    "position": {
+      "x": 520,
+      "y": 150
+    }
+  }
+}
+```
+
+**Position Data in Resource Responses:**
+
+Position data is automatically included in all resource listing and detail endpoints:
+
+```json
+{
+  "id": 1,
+  "resourceType": "instance",
+  "name": "My Server",
+  "position": {
+    "x": 520,
+    "y": 150
+  },
+  // ... other fields
+}
+```
+
+If a resource doesn't have a position set, the `position` field will be `null`.
+
+**Example Response (with position):**
+```json
+{
+  "message": "Resources retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "resourceType": "instance",
+      "name": "Web Server",
+      "position": {
+        "x": 520,
+        "y": 150
+      },
+      "metadata": { ... }
+    },
+    {
+      "id": 2,
+      "resourceType": "database",
+      "name": "Main DB",
+      "position": {
+        "x": 800,
+        "y": 300
+      },
+      "metadata": { ... }
+    }
+  ]
+}
+```

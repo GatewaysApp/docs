@@ -1,0 +1,193 @@
+---
+title: "07-resource-connections"
+description: "HTTP API: 07-resource-connections"
+---
+
+### Resource Connections
+
+Resource connections allow you to link different resources together within a project environment. For example:
+- Connect an **application** to a **server** (instance) - the application will be installed on the server
+- Connect a **server** to a **database** - security groups and networking will be configured to allow access
+
+#### Create Resource Connection
+- `POST /api/:projectSlug/:environmentSlug/resource-connections` - Create a connection between two resources
+
+**Request Body:**
+```json
+{
+  "sourceResourceType": "instance",
+  "sourceResourceId": 1,
+  "targetResourceType": "application",
+  "targetResourceId": 2,
+  "connectionDetails": {
+    "autoInstall": true,
+    "installPath": "/opt/apps"
+  }
+}
+```
+
+**Supported Resource Types:**
+- `instance` - EC2 instances/servers
+- `application` - Application files
+- `database` - RDS databases
+- `terminal` - Terminal resources
+- `firewall` - Firewall/security group resources
+- `storage_bucket` - S3 storage buckets
+- `bucket_explorer` - Bucket explorer resources
+- `static_website` - Static website resources
+
+**Allowed Connections:**
+- `application` → `instance` (Applications can only connect to instances)
+- `terminal` → `instance` (Terminals connect to instances via SSH)
+- `bucket_explorer` → `storage_bucket` or `static_website` (Bucket explorers connect to storage)
+- `instance` → `firewall` (Instances protected by firewalls)
+
+**Example:**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/resource-connections" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sourceResourceType": "instance",
+    "sourceResourceId": 1,
+    "targetResourceType": "application",
+    "targetResourceId": 2
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Resource connection created successfully",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "projectId": 1,
+    "environmentId": 1,
+    "sourceResourceType": "instance",
+    "sourceResourceId": 1,
+    "targetResourceType": "application",
+    "targetResourceId": 2,
+    "status": "pending",
+    "connectionDetails": null,
+    "errorMessage": null,
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### List Resource Connections
+- `GET /api/:projectSlug/:environmentSlug/resource-connections` - List all connections in a project environment
+
+**Query Parameters:**
+- `sourceResourceType` - Filter by source resource type
+- `sourceResourceId` - Filter by source resource ID
+- `targetResourceType` - Filter by target resource type
+- `targetResourceId` - Filter by target resource ID
+- `status` - Filter by connection status (`pending`, `connecting`, `connected`, `failed`, `disconnected`)
+
+**Example:**
+```bash
+curl -X GET "https://api.gateways.app/api/codepanel/master/resource-connections?status=connected" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Get Connection Details
+- `GET /api/:projectSlug/:environmentSlug/resource-connections/:connectionId` - Get details of a specific connection
+
+**Example:**
+```bash
+curl -X GET "https://api.gateways.app/api/codepanel/master/resource-connections/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Update Connection
+- `PATCH /api/:projectSlug/:environmentSlug/resource-connections/:connectionId` - Update connection status or details
+
+**Request Body:**
+```json
+{
+  "status": "connected",
+  "connectionDetails": {
+    "securityGroupId": "sg-12345678",
+    "endpoint": "db.example.com:3306"
+  }
+}
+```
+
+**Connection Status Values:**
+- `pending` - Connection created but not yet processed
+- `connecting` - Connection is being established
+- `connected` - Connection is active and configured
+- `failed` - Connection failed to establish
+- `disconnected` - Connection was disconnected
+
+**Example:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/codepanel/master/resource-connections/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "connected",
+    "connectionDetails": {
+      "securityGroupId": "sg-12345678"
+    }
+  }'
+```
+
+#### Delete Connection
+- `DELETE /api/:projectSlug/:environmentSlug/resource-connections/:connectionId` - Delete a resource connection (soft delete)
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resource-connections/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Get Resource Connections
+- `GET /api/:projectSlug/:environmentSlug/resources/:resourceType/:resourceId/connections` - Get all connections for a specific resource (both as source and target)
+
+**Example:**
+```bash
+curl -X GET "https://api.gateways.app/api/codepanel/master/resources/instance/1/connections" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Resource connections retrieved successfully",
+  "resourceType": "instance",
+  "resourceId": 1,
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "sourceResourceType": "instance",
+      "sourceResourceId": 1,
+      "targetResourceType": "application",
+      "targetResourceId": 2,
+      "status": "connected"
+    },
+    {
+      "id": 2,
+      "sourceResourceType": "database",
+      "sourceResourceId": 3,
+      "targetResourceType": "instance",
+      "targetResourceId": 1,
+      "status": "connected"
+    }
+  ]
+}
+```
+
+### Error Responses
+
+**Error Response (Connection not allowed):**
+```json
+{
+  "error": "Connection not allowed",
+  "message": "Connection from application to database is not allowed. Please configure this connection in allowed_connections table."
+}
+```

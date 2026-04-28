@@ -1,0 +1,1201 @@
+---
+title: "Get active regions for the project's connected cloud provider"
+description: "HTTP API: Get active regions for the project's connected cloud provider"
+---
+
+### Cloud Infrastructure Endpoints (Multi-Cloud)
+
+#### Manage Cloud Providers
+- `GET /api/cloud/providers` - List cloud providers (aws, gcp, azure). Auth required. Query: `include_inactive=true` to include inactive. Used by the connect UI to show Connect AWS / GCP / Azure.
+- `PATCH /api/cloud/providers/:providerId/enable` - Enable a cloud provider (admin)
+- `PATCH /api/cloud/providers/:providerId/disable` - Disable a cloud provider (admin)
+
+**Note:** To connect cloud providers, use the workspace-level cloud connections API: `connect-aws`, `connect-gcp`, `connect-azure` (`/api/cloud-connections/:workspaceSlug`).
+
+#### Get Regions
+- `GET /api/cloud/:workspaceSlug/:projectSlug/regions?include_inactive=false` - Get regions for the project's connected cloud provider
+
+**Path Parameters:**
+- `workspaceSlug` (required): The workspace slug identifier
+- `projectSlug` (required): The project slug identifier
+
+**Query Parameters:**
+- `include_inactive` (optional): Include inactive regions (default: false)
+
+**Description:**
+Returns regions for the cloud provider that is connected to the specified project (AWS, GCP, or Azure). The provider is automatically detected from the project's connected cloud connection (`connectedCloudId`). Azure regions are stored in the same `regions` table; seed them with `npm run seed:aws` (which also seeds AWS and GCP regions).
+**Authentication:** Required (Bearer token)
+
+**Example Requests:**
+```bash
+# Get active regions for the project's connected cloud provider
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-workspace/my-project/regions"
+
+# Get all regions including inactive
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-workspace/my-project/regions?include_inactive=true"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Regions retrieved successfully",
+  "workspace": {
+    "id": 1,
+    "slug": "my-workspace",
+    "name": "My Workspace"
+  },
+  "project": {
+    "id": 5,
+    "slug": "my-project",
+    "name": "My Project"
+  },
+  "provider": "aws",
+  "cloudConnection": {
+    "id": 10,
+    "accountName": "Production AWS Account",
+    "accountId": "123456789012",
+    "region": "us-east-1"
+  },
+  "includeInactive": false,
+  "count": 15,
+  "data": [
+    {
+      "id": 1,
+      "code": "us-east-1",
+      "name": "US East (N. Virginia)",
+      "isActive": true,
+      "metadata": {
+        "location": "N. Virginia"
+      }
+    },
+    {
+      "id": 2,
+      "code": "us-west-2",
+      "name": "US West (Oregon)",
+      "isActive": true,
+      "metadata": {
+        "location": "Oregon"
+      }
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+If project has no cloud connection:
+```json
+{
+  "error": "No cloud connection",
+  "message": "This project does not have a connected cloud provider. Please connect a cloud provider to this project first."
+}
+```
+
+If project not found:
+```json
+{
+  "error": "Project not found",
+  "message": "The specified project does not exist"
+}
+```
+
+If workspace not found or access denied:
+```json
+{
+  "error": "Workspace not found",
+  "message": "The specified workspace does not exist"
+}
+```
+
+#### Get Cache Engines
+- `GET /api/cloud/cache-engines` - Get available cache engine types (Redis, Valkey, Memcached)
+- `GET /api/cloud/cache-engines?include_inactive=true` - Include inactive cache engines
+
+**Query Parameters:**
+- `include_inactive` (optional): Include inactive cache engines (default: false)
+
+**Example Requests:**
+```bash
+# Get all active cache engines
+curl "https://api.gateways.app/api/cloud/cache-engines"
+
+# Get all cache engines including inactive
+curl "https://api.gateways.app/api/cloud/cache-engines?include_inactive=true"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Cache engines retrieved successfully",
+  "includeInactive": false,
+  "count": 3,
+  "data": [
+    {
+      "id": 1,
+      "name": "Redis OSS",
+      "code": "redis",
+      "description": "Open-source Redis (Redis Open Source)",
+      "isActive": true,
+      "config": {
+        "defaultPort": 6379,
+        "awsCode": "redis",
+        "protocol": "redis",
+        "supportsClustering": true,
+        "supportsPersistence": true,
+        "availableVersions": ["7.2.4", "7.2.3", "7.1.4", "7.0.15", "6.2.7"],
+        "versionsLastUpdated": "2024-01-15T10:30:00.000Z",
+        "totalVersions": 12
+      },
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "Valkey",
+      "code": "valkey",
+      "description": "Open-source fork of Redis, compatible with Redis commands",
+      "isActive": true,
+      "config": {
+        "defaultPort": 6379,
+        "awsCode": "valkey",
+        "protocol": "redis",
+        "supportsClustering": true,
+        "supportsPersistence": true,
+        "availableVersions": ["7.2.4", "7.2.3", "7.1.4", "7.0.15"],
+        "versionsLastUpdated": "2024-01-15T10:30:00.000Z",
+        "totalVersions": 8
+      },
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 3,
+      "name": "Memcached",
+      "code": "memcached",
+      "description": "High-performance distributed memory caching system",
+      "isActive": true,
+      "config": {
+        "defaultPort": 11211,
+        "awsCode": "memcached",
+        "protocol": "memcached",
+        "supportsClustering": false,
+        "supportsPersistence": false,
+        "availableVersions": ["1.6.24", "1.6.23", "1.6.22", "1.6.21"],
+        "versionsLastUpdated": "2024-01-15T10:30:00.000Z",
+        "totalVersions": 5
+      },
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+**Note:** To update the available versions, run:
+```bash
+npm run fetch-cache-engine-versions
+```
+
+#### Get Cache Engine Versions
+- `GET /api/cloud/:projectSlug/cache-versions` - Get available versions for cache engines
+- `GET /api/cloud/:projectSlug/cache-versions?engine=redis` - Filter by specific engine
+- `GET /api/cloud/:projectSlug/cache-versions?mode=serverless` - Get only serverless-compatible versions
+
+**Path Parameters:**
+- `projectSlug` (required): Project slug. Requires authentication; user must have access to the project.
+
+**Query Parameters:**
+- `engine` (optional): Filter by engine code (e.g., 'redis', 'valkey', 'memcached')
+- `include_inactive` (optional): Include inactive cache engines (default: false)
+- `mode` (optional): **AWS only.** `'serverless'` | `'all'` (default: `'all'`). Ignored for GCP; GCP responses never include `serverlessVersions`, `totalServerlessVersions`, or `mode`.
+
+**Description:**
+Returns available engine versions for the project's cloud provider. **AWS:** ElastiCache (redis, valkey, memcached) via `npm run fetch-cache-engine-versions`; may include `serverlessVersions` when `mode=all`. **GCP:** Memorystore for Redis and Memcached via `npm run fetch-gcp-cache-engine-versions`; `availableVersions` from `gcpVersions` (e.g. REDIS_7_2, MEMCACHE_1_6). GCP does not support Valkey. **GCP has no serverless concept:** responses for GCP do not include `serverlessVersions`, `totalServerlessVersions`, or `mode`. **Azure:** Cache for Redis only; `availableVersions` (e.g. 6, 4), `serverlessVersions: []`, `totalServerlessVersions: 0`. For **Azure** and **GCP**, the response includes `provisionedInstanceTypesAvailable: true` and `cacheInstanceTypesEndpoint`; use that endpoint to list provisioned cache instance types (see **Get Cache Instance Types** below).
+
+**Serverless compatibility (AWS only):**
+- **Redis OSS**: 7.1+
+- **Valkey**: 7.2+
+- **Memcached**: 1.6.21+
+
+When `mode=serverless` (AWS), only serverless-compatible versions are returned. GCP Memorystore is provisioned, not serverless.
+
+**Example Requests:**
+```bash
+# Get all cache engine versions (all modes); replace myproject with your project slug
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/cache-versions"
+
+# Get only serverless-compatible versions
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/cache-versions?mode=serverless"
+
+# Get Redis versions only (all modes)
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/cache-versions?engine=redis"
+
+# Get Redis serverless-compatible versions only
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/cache-versions?engine=redis&mode=serverless"
+
+# Get Valkey serverless-compatible versions only
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/cache-versions?engine=valkey&mode=serverless"
+```
+
+**Example Response (mode=all):**
+```json
+{
+  "message": "Cache engine versions retrieved successfully (mode: all)",
+  "mode": "all",
+  "count": 3,
+  "data": [
+    {
+      "engine": "redis",
+      "engineName": "Redis OSS",
+      "description": "Open-source Redis (Redis Open Source)",
+      "isActive": true,
+      "mode": "all",
+      "availableVersions": [
+        "7.2.4",
+        "7.2.3",
+        "7.2.2",
+        "7.1.4",
+        "7.0.15",
+        "6.2.7",
+        "6.0.20"
+      ],
+      "totalVersions": 7,
+      "serverlessVersions": [
+        "7.2.4",
+        "7.2.3",
+        "7.2.2",
+        "7.1.4"
+      ],
+      "totalServerlessVersions": 4,
+      "versionsLastUpdated": "2024-01-15T10:30:00.000Z",
+      "config": {
+        "defaultPort": 6379,
+        "protocol": "redis",
+        "supportsClustering": true,
+        "supportsPersistence": true
+      },
+      "pricing": [
+        {
+          "region": "us-east-1",
+          "regionName": "US East (N. Virginia)",
+          "storagePricePerGBHour": 0.083700,
+          "computePricePerMillionECPUs": 0.002270,
+          "metadata": {
+            "storageUnit": "GB-hour",
+            "computeUnit": "per million ECPUs"
+          },
+          "effectiveDate": "2024-01-15"
+        }
+      ],
+      "pricingAvailable": true
+    },
+    {
+      "engine": "valkey",
+      "engineName": "Valkey",
+      "description": "Open-source fork of Redis, compatible with Redis commands",
+      "isActive": true,
+      "mode": "all",
+      "availableVersions": [
+        "7.2.4",
+        "7.2.3",
+        "7.2.2",
+        "7.1.4",
+        "7.0.15"
+      ],
+      "totalVersions": 5,
+      "serverlessVersions": [
+        "7.2.4",
+        "7.2.3",
+        "7.2.2"
+      ],
+      "totalServerlessVersions": 3,
+      "versionsLastUpdated": "2024-01-15T10:30:00.000Z",
+      "config": {
+        "defaultPort": 6379,
+        "protocol": "redis",
+        "supportsClustering": true,
+        "supportsPersistence": true
+      },
+      "pricing": [
+        {
+          "region": "us-east-1",
+          "regionName": "US East (N. Virginia)",
+          "storagePricePerGBHour": 0.083700,
+          "computePricePerMillionECPUs": 0.002270,
+          "metadata": {},
+          "effectiveDate": "2024-01-15"
+        }
+      ],
+      "pricingAvailable": true
+    },
+    {
+      "engine": "memcached",
+      "engineName": "Memcached",
+      "description": "High-performance distributed memory caching system",
+      "isActive": true,
+      "mode": "all",
+      "availableVersions": [
+        "1.6.24",
+        "1.6.23",
+        "1.6.22",
+        "1.6.21",
+        "1.6.20"
+      ],
+      "totalVersions": 5,
+      "serverlessVersions": [
+        "1.6.24",
+        "1.6.23",
+        "1.6.22",
+        "1.6.21"
+      ],
+      "totalServerlessVersions": 4,
+      "versionsLastUpdated": "2024-01-15T10:30:00.000Z",
+      "config": {
+        "defaultPort": 11211,
+        "protocol": "memcached",
+        "supportsClustering": false,
+        "supportsPersistence": false
+      },
+      "pricing": [
+        {
+          "region": "us-east-1",
+          "regionName": "US East (N. Virginia)",
+          "storagePricePerGBHour": 0.083700,
+          "computePricePerMillionECPUs": 0.002270,
+          "metadata": {},
+          "effectiveDate": "2024-01-15"
+        }
+      ],
+      "pricingAvailable": true
+    }
+  ]
+}
+```
+
+**Pricing Information:**
+The response always includes pricing information for each cache engine (when available), regardless of the `mode` parameter:
+
+**Example Response (mode=serverless):**
+```json
+{
+  "message": "Cache engine versions retrieved successfully (mode: serverless)",
+  "mode": "serverless",
+  "count": 3,
+  "data": [
+    {
+      "engine": "redis",
+      "engineName": "Redis OSS",
+      "description": "Open-source Redis (Redis Open Source)",
+      "isActive": true,
+      "mode": "serverless",
+      "availableVersions": [
+        "7.2.4",
+        "7.2.3",
+        "7.2.2",
+        "7.1.4"
+      ],
+      "totalVersions": 4,
+      "versionsLastUpdated": "2024-01-15T10:30:00.000Z",
+      "config": {
+        "defaultPort": 6379,
+        "protocol": "redis",
+        "supportsClustering": true,
+        "supportsPersistence": true
+      },
+      "pricing": [
+        {
+          "region": "us-east-1",
+          "regionName": "US East (N. Virginia)",
+          "storagePricePerGBHour": 0.083700,
+          "computePricePerMillionECPUs": 0.002270,
+          "metadata": {
+            "storageUnit": "GB-hour",
+            "computeUnit": "per million ECPUs"
+          },
+          "effectiveDate": "2024-01-15"
+        },
+        {
+          "region": "us-west-2",
+          "regionName": "US West (Oregon)",
+          "storagePricePerGBHour": 0.083700,
+          "computePricePerMillionECPUs": 0.002270,
+          "metadata": {},
+          "effectiveDate": "2024-01-15"
+        }
+      ],
+      "pricingAvailable": true
+    },
+    {
+      "engine": "valkey",
+      "engineName": "Valkey",
+      "description": "Open-source fork of Redis, compatible with Redis commands",
+      "isActive": true,
+      "mode": "serverless",
+      "availableVersions": [
+        "7.2.4",
+        "7.2.3",
+        "7.2.2"
+      ],
+      "totalVersions": 3,
+      "versionsLastUpdated": "2024-01-15T10:30:00.000Z",
+      "config": {
+        "defaultPort": 6379,
+        "protocol": "redis",
+        "supportsClustering": true,
+        "supportsPersistence": true
+      },
+      "pricing": [
+        {
+          "region": "us-east-1",
+          "regionName": "US East (N. Virginia)",
+          "storagePricePerGBHour": 0.083700,
+          "computePricePerMillionECPUs": 0.002270,
+          "metadata": {},
+          "effectiveDate": "2024-01-15"
+        }
+      ],
+      "pricingAvailable": true
+    },
+    {
+      "engine": "memcached",
+      "engineName": "Memcached",
+      "description": "High-performance distributed memory caching system",
+      "isActive": true,
+      "mode": "serverless",
+      "availableVersions": [
+        "1.6.24",
+        "1.6.23",
+        "1.6.22",
+        "1.6.21"
+      ],
+      "totalVersions": 4,
+      "versionsLastUpdated": "2024-01-15T10:30:00.000Z",
+      "config": {
+        "defaultPort": 11211,
+        "protocol": "memcached",
+        "supportsClustering": false,
+        "supportsPersistence": false
+      },
+      "pricing": [
+        {
+          "region": "us-east-1",
+          "regionName": "US East (N. Virginia)",
+          "storagePricePerGBHour": 0.083700,
+          "computePricePerMillionECPUs": 0.002270,
+          "metadata": {},
+          "effectiveDate": "2024-01-15"
+        }
+      ],
+      "pricingAvailable": true
+    }
+  ]
+}
+```
+
+**Example Response (GCP – no serverless):**
+For projects connected to GCP, the response has `provider: "gcp"`, `mode: null`, and **no** `serverlessVersions`, `totalServerlessVersions`, or `mode` in any item. GCP Memorystore is provisioned, not serverless.
+
+```json
+{
+  "message": "Cache engine versions retrieved successfully (provider: gcp)",
+  "provider": "gcp",
+  "mode": null,
+  "count": 2,
+  "data": [
+    {
+      "engine": "redis",
+      "engineName": "Redis OSS",
+      "description": "Open-source Redis (Redis Open Source)",
+      "isActive": true,
+      "provider": "gcp",
+      "availableVersions": ["REDIS_7_2", "REDIS_7_0", "REDIS_6_X", "REDIS_5_0", "REDIS_4_0", "REDIS_3_2"],
+      "totalVersions": 6,
+      "versionsLastUpdated": "2025-01-15T12:00:00.000Z",
+      "config": { "defaultPort": 6379, "protocol": "redis", "supportsClustering": true, "supportsPersistence": true },
+      "pricing": [],
+      "pricingAvailable": false
+    },
+    {
+      "engine": "memcached",
+      "engineName": "Memcached",
+      "description": "High-performance distributed memory caching system",
+      "isActive": true,
+      "provider": "gcp",
+      "availableVersions": ["MEMCACHE_1_6", "MEMCACHE_1_5"],
+      "totalVersions": 2,
+      "versionsLastUpdated": "2025-01-15T12:00:00.000Z",
+      "config": { "defaultPort": 11211, "protocol": "memcached", "supportsClustering": false, "supportsPersistence": false },
+      "pricing": [],
+      "pricingAvailable": false
+    }
+  ]
+}
+```
+
+**Note:** 
+- To update the available versions, run:
+  ```bash
+  npm run fetch-cache-engine-versions
+  ```
+  This script fetches the latest versions from AWS ElastiCache, filters serverless-compatible versions based on AWS requirements, and updates the metadata table with both all versions and serverless-compatible versions.
+
+- For GCP Memorystore (Redis and Memcached), run `npm run fetch-gcp-cache-engine-versions`. This does **not** write any serverless-related fields; GCP has no serverless offering.
+
+- To update pricing information (pricing is included in all responses when available), run:
+  ```bash
+  npm run fetch-cache-serverless-pricing
+  ```
+  This script fetches ElastiCache Serverless pricing (storage and compute) from AWS Pricing API and stores it in the database.
+
+- For **Azure** and **GCP** (provisioned caches, no serverless), the response includes `provisionedInstanceTypesAvailable: true` and `cacheInstanceTypesEndpoint`. Use that endpoint to list provisioned cache instance types (e.g. Basic C0, Standard C1, M1). Run `npm run seed:cache-instance-types` to populate the `cache_instance_types` table.
+
+#### Get Cache Instance Types
+- `GET /api/cloud/:projectSlug/cache-instance-types` - List provisioned cache instance types (Azure Cache for Redis, GCP Memorystore). Use when the provider has no serverless (Azure, GCP).
+- `GET /api/cloud/:projectSlug/cache-instance-types?region=eastus&engine=redis` - Filter by region and cache engine
+
+**Path Parameters:**
+- `projectSlug` (required): Project slug. Requires authentication; user must have access to the project. The cloud provider is inferred from the project's connected cloud connection.
+
+**Query Parameters:**
+- `region` (optional): Region code (e.g., `eastus`, `us-central1`). For Azure, AWS-style codes are normalized (e.g. `us-east-1` → `eastus`).
+- `engine` (optional): Filter by `cache_engine` (`redis`, `memcached`). Azure supports Redis only; GCP supports Redis (Memcached tiers may be added later).
+- `family` (optional): Filter by family (e.g., `Basic`, `Standard`, `Premium` for Azure; `M1`, `M2`, `BASIC` for GCP).
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 50, max: 100)
+
+**Description:**
+Returns provisioned cache tiers from the `cache_instance_types` table. **AWS:** Returns `data: []` with a message that instance types are for provisioned caches; use serverless ElastiCache and `cache-versions` instead. **Azure:** Basic (C0–C6), Standard (C0–C6), Premium (P1–P5). **GCP:** M1–M6, BASIC, STANDARD_HA. Data is populated by `npm run seed:cache-instance-types`.
+
+**Authentication:** Required (Bearer token)
+
+**Example Requests:**
+```bash
+# List cache instance types (Azure or GCP project)
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/cache-instance-types"
+
+# Filter by region and engine
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/cache-instance-types?region=eastus&engine=redis"
+
+# Filter by family (e.g. Basic tier only)
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/cache-instance-types?family=Basic&region=eastus"
+
+# Pagination
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/cache-instance-types?page=1&limit=25"
+```
+
+**Example Response (Azure or GCP):**
+```json
+{
+  "message": "Cache instance types retrieved successfully",
+  "provider": "azure",
+  "filters": { "region": "eastus", "engine": "redis", "family": null },
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 19,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrev": false
+  },
+  "count": 19,
+  "data": [
+    {
+      "id": 1,
+      "code": "Basic_C0",
+      "name": "Basic C0 (250 MB)",
+      "family": "Basic",
+      "memoryGb": 0.25,
+      "cacheEngine": "redis",
+      "pricePerHour": null,
+      "metadata": { "sku": { "name": "Basic", "family": "C", "capacity": 0 } },
+      "region": { "code": "eastus", "name": "East US" }
+    },
+    {
+      "id": 2,
+      "code": "Basic_C1",
+      "name": "Basic C1 (1 GB)",
+      "family": "Basic",
+      "memoryGb": 1,
+      "cacheEngine": "redis",
+      "pricePerHour": null,
+      "metadata": { "sku": { "name": "Basic", "family": "C", "capacity": 1 } },
+      "region": { "code": "eastus", "name": "East US" }
+    }
+  ]
+}
+```
+
+**Example Response (AWS – empty):**
+```json
+{
+  "message": "Cache instance types are for provisioned caches (Azure, GCP). AWS uses serverless ElastiCache; use cache-versions instead.",
+  "provider": "aws",
+  "data": [],
+  "pagination": { "page": 1, "limit": 50, "total": 0, "totalPages": 0, "hasNext": false, "hasPrev": false },
+  "count": 0
+}
+```
+
+**Example Response (no cloud connection):**
+```json
+{
+  "message": "No cloud connection. Connect Azure or GCP to list provisioned cache instance types.",
+  "provider": null,
+  "data": [],
+  "pagination": { "page": 1, "limit": 50, "total": 0, "totalPages": 0, "hasNext": false, "hasPrev": false },
+  "count": 0
+}
+```
+
+**Notes:**
+- Populate the `cache_instance_types` table: `npm run seed:cache-instance-types`
+- Fetch pricing for `price_per_hour`: `npm run fetch-cache-instance-pricing`  
+  - **Azure:** Azure Retail Prices API (serviceName `Redis Cache`); updates `price_per_hour` for Basic, Standard, Premium.  
+  - **GCP:** Reference $/GiB-hour (us-central1); `price_per_hour = memory_gb × rate` (M1/M2 from published docs; M3–M6 use M2 rate).
+
+#### Get Instance Types
+- `GET /api/cloud/:projectSlug/instance-types?region=us-east-1&page=1&limit=50` - Get instance types (EC2/machine types) with OS-specific pricing for the project's connected cloud provider. **AWS:** `npm run fetch-instance-types` then `npm run update-pricing`. **GCP:** `npm run fetch-gcp-instance-types` then `npm run fetch-gcp-pricing` (requires `GCP_PROJECT_ID`, credentials, and Cloud Billing API).
+
+**Path Parameters:**
+- `projectSlug` (required): Project slug. The cloud provider is inferred from the project's connected cloud connection.
+
+**Query Parameters:**
+- `region` (optional): Region code (e.g., 'us-east-1'). If omitted, returns instance types for all regions
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 50, max: 100)
+
+**Authentication:** Required (Bearer token)
+
+**Features:**
+- Sorted by family alphabetically, then by instance code
+- Paginated results with metadata
+- Includes OS-specific pricing (Linux, Windows, RHEL, SUSE)
+
+**Example Requests:**
+```bash
+# Get first page of instance types (50 items)
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/instance-types?region=us-east-1"
+
+# Get second page with 25 items per page
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/instance-types?region=us-east-1&page=2&limit=25"
+
+# Get all instance types for a region (paginated)
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/instance-types?region=us-east-1&page=1&limit=100"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Instance types retrieved successfully",
+  "project": {
+    "id": 1,
+    "slug": "my-project",
+    "name": "My Project"
+  },
+  "provider": "aws",
+  "region": "us-east-1",
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 400,
+    "totalPages": 8,
+    "hasNextPage": true,
+    "hasPrevPage": false
+  },
+  "count": 50,
+  "data": [
+    {
+      "id": 1,
+      "code": "c5.large",
+      "name": "c5.large",
+      "family": "c5",
+      "vcpus": 2,
+      "memoryGb": 4.0,
+      "storageGb": null,
+      "networkPerformance": "Up to 10 Gigabit",
+      "architecture": "x86_64",
+      "pricePerHour": 0.085000,
+      "pricing": {
+        "Linux": {
+          "pricePerHour": 0.085000,
+          "currency": "USD",
+          "purchaseOption": "On-Demand"
+        },
+        "Windows": {
+          "pricePerHour": 0.192000,
+          "currency": "USD",
+          "purchaseOption": "On-Demand"
+        }
+      },
+      "region": {
+        "code": "us-east-1",
+        "name": "US East (N. Virginia)"
+      },
+      "metadata": {
+        "currentGeneration": true
+      }
+    }
+  ]
+}
+```
+
+#### Get Images/AMIs
+- `GET /api/cloud/:projectSlug/images?region=us-east-1&os_type=Amazon` - Get images/AMIs for the project's connected cloud provider
+
+**Path Parameters:**
+- `projectSlug` (required): Project slug. The cloud provider is inferred from the project's connected cloud connection.
+
+**Query Parameters:**
+- `region` (optional): Region code (e.g., 'us-east-1'). If omitted, returns images for all regions
+- `os_type` (optional): Filter by OS type. Available values:
+  - **AWS:** `Amazon`, `Ubuntu`, `RedHat`, `Debian`, `SUSE`, `Windows`
+  - **GCP:** `Debian`, `Ubuntu`, `RedHat`, `SUSE`, `openSUSE`, `CentOS`, `Rocky`, `AlmaLinux`, `COS`, `Fedora`, `Windows`. Populate via `npm run fetch-gcp-images`.
+
+**Authentication:** Required (Bearer token)
+
+**Example Requests:**
+```bash
+# Get all AMIs for the project's cloud in us-east-1
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/images?region=us-east-1"
+
+# Get only Ubuntu AMIs
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/images?region=us-east-1&os_type=Ubuntu"
+
+# Get Windows Server AMIs
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/images?region=us-east-1&os_type=Windows"
+
+# Get all Amazon Linux AMIs across all regions
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/images?os_type=Amazon"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Images retrieved successfully",
+  "project": {
+    "id": 1,
+    "slug": "my-project",
+    "name": "My Project"
+  },
+  "provider": "aws",
+  "region": "us-east-1",
+  "osType": "Ubuntu",
+  "count": 15,
+  "data": [
+    {
+      "id": 1,
+      "imageId": "ami-0c55b159cbfafe1f0",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20240115",
+      "description": "Canonical, Ubuntu, 22.04 LTS, amd64 jammy image build on 2024-01-15",
+      "osType": "Ubuntu",
+      "osName": "Ubuntu Server 22.04",
+      "osVersion": "22.04",
+      "architecture": "x86_64",
+      "virtualizationType": "hvm",
+      "rootDeviceType": "ebs",
+      "isPublic": true,
+      "region": {
+        "code": "us-east-1",
+        "name": "US East (N. Virginia)"
+      },
+      "metadata": {
+        "imageOwnerAlias": "amazon",
+        "platform": null
+      }
+    }
+  ]
+}
+```
+
+#### Get Volume Types
+- `GET /api/cloud/:projectSlug/volume-types?region=us-east-1` - Get volume types and pricing for the project's connected cloud. **AWS:** gp3, gp2, io1, io2 (`npm run fetch-volume-pricing`). **GCP:** pd-standard, pd-balanced, pd-ssd, pd-extreme (`npm run fetch-gcp-volume-pricing`; needs Cloud Billing API).
+
+**Path Parameters:**
+- `projectSlug` (required): Project slug. The cloud provider is inferred from the project's connected cloud connection.
+
+**Query Parameters:**
+- `region` (optional): Region code (e.g., 'us-east-1'). If omitted, returns volume types for all regions
+- `volume_type` (optional): Filter by volume type (gp3, gp2, io1, io2)
+- `resource_type` (optional): Filter by resource type - `ec2` for EC2 instances or `db`/`rds` for RDS databases
+
+**Authentication:** Required (Bearer token)
+
+**Example Requests:**
+```bash
+# Get all volume types for the project's cloud in us-east-1
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/volume-types?region=us-east-1"
+
+# Get only gp3 volume pricing
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/volume-types?region=us-east-1&volume_type=gp3"
+
+# Get only EC2 volume types
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/volume-types?region=us-east-1&resource_type=ec2"
+
+# Get only RDS/database volume types
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "https://api.gateways.app/api/cloud/my-project/volume-types?region=us-east-1&resource_type=db"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Volume types retrieved successfully",
+  "project": {
+    "id": 1,
+    "slug": "my-project",
+    "name": "My Project"
+  },
+  "provider": "aws",
+  "region": "us-east-1",
+  "volumeType": "all",
+  "resourceType": "ec2",
+  "count": 4,
+  "data": [
+    {
+      "id": 1,
+      "volumeType": "gp3",
+      "resourceType": "ec2",
+      "pricePerGb": 0.080000,
+      "minSizeGb": 8,
+      "maxSizeGb": 16384,
+      "currency": "USD",
+      "metadata": {
+        "iops": "16000",
+        "throughput": "1000",
+        "durability": "99.8-99.9%"
+      },
+      "region": {
+        "code": "us-east-1",
+        "name": "US East (N. Virginia)"
+      }
+    }
+  ]
+}
+```
+
+**Note:** Volume types are stored separately for EC2 and RDS because they have different minimum size requirements:
+- **EC2**: All volume types (gp3, gp2, io1, io2) have a minimum size of 8GB
+- **RDS**: gp2/gp3 have a minimum size of 20GB, while io1/io2 have a minimum size of 100GB
+
+#### Get Lambda Runtimes
+- `GET /api/cloud/lambda-runtimes` - Get all available Lambda runtimes
+- `GET /api/cloud/lambda-runtimes?include_inactive=true` - Include inactive runtimes
+- `GET /api/cloud/lambda-runtimes?language=javascript` - Filter by programming language
+- `GET /api/cloud/lambda-runtimes?family=nodejs` - Filter by runtime family
+
+**Query Parameters:**
+- `include_inactive` (optional): Include inactive runtimes (default: false)
+- `language` (optional): Filter by programming language (`javascript`, `python`, `java`, `csharp`, `go`, `ruby`, `custom`)
+- `family` (optional): Filter by runtime family (`nodejs`, `python`, `java`, `dotnet`, `go`, `ruby`, `provided`)
+
+**Example Requests:**
+```bash
+# Get all active Lambda runtimes
+curl "https://api.gateways.app/api/cloud/lambda-runtimes"
+
+# Get all Lambda runtimes including inactive
+curl "https://api.gateways.app/api/cloud/lambda-runtimes?include_inactive=true"
+
+# Get only Node.js runtimes
+curl "https://api.gateways.app/api/cloud/lambda-runtimes?family=nodejs"
+
+# Get only Python runtimes
+curl "https://api.gateways.app/api/cloud/lambda-runtimes?language=python"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Lambda runtimes retrieved successfully",
+  "includeInactive": false,
+  "filters": {
+    "language": null,
+    "family": null
+  },
+  "count": 17,
+  "data": [
+    {
+      "id": 1,
+      "code": "nodejs20.x",
+      "name": "Node.js 20.x",
+      "description": "Node.js 20 runtime",
+      "isActive": true,
+      "language": "javascript",
+      "family": "nodejs",
+      "version": "20",
+      "distro": null,
+      "metadata": {
+        "language": "javascript",
+        "family": "nodejs",
+        "version": "20"
+      },
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "code": "python3.12",
+      "name": "Python 3.12",
+      "description": "Python 3.12 runtime",
+      "isActive": true,
+      "language": "python",
+      "family": "python",
+      "version": "3.12",
+      "distro": null,
+      "metadata": {
+        "language": "python",
+        "family": "python",
+        "version": "3.12"
+      },
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Supported Runtimes:**
+- **Node.js:** `nodejs20.x`, `nodejs18.x`, `nodejs16.x`
+- **Python:** `python3.12`, `python3.11`, `python3.10`, `python3.9`
+- **Java:** `java21`, `java17`, `java11`, `java8.al2`
+- **.NET:** `dotnet8`, `dotnet6`
+- **Go:** `go1.x`
+- **Ruby:** `ruby3.2`
+- **Custom:** `provided.al2`, `provided.al2023`
+
+---
+
+#### Get Database Types
+- `GET /api/cloud/:projectSlug/database-types` - Get all database engine types (MySQL, PostgreSQL, MariaDB, etc.)
+- `GET /api/cloud/:projectSlug/database-types?include_inactive=true` - Get all database types including inactive ones
+
+**Path Parameters:**
+- `projectSlug` (required): Project slug. Requires authentication; user must have access to the project.
+
+**Query Parameters:**
+- `include_inactive` (optional): Include inactive database types (default: false)
+
+**Example Requests:**
+```bash
+# Get all active database types (replace myproject with your project slug)
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/database-types"
+
+# Get all database types including inactive
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/database-types?include_inactive=true"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Database types retrieved successfully",
+  "includeInactive": false,
+  "count": 3,
+  "data": [
+    {
+      "id": 1,
+      "name": "MySQL",
+      "code": "mysql",
+      "description": "MySQL database engine",
+      "isActive": true,
+      "metadata": {
+        "defaultPort": 3306
+      },
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "PostgreSQL",
+      "code": "postgres",
+      "description": "PostgreSQL database engine",
+      "isActive": true,
+      "metadata": {
+        "defaultPort": 5432
+      },
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### Get Database Versions
+- `GET /api/cloud/:projectSlug/:environmentSlug/database-versions` - Get available database **engines and versions only** (no instance types). Uses the project's **connected cloud provider** (same as `GET /api/cloud/:projectSlug/images`).
+- `GET /api/cloud/:projectSlug/:environmentSlug/database-versions?engine=mysql` - Filter by engine (e.g. mysql, postgres)
+- `GET /api/cloud/:projectSlug/:environmentSlug/database-versions?engine=mysql&region=us-east-1` - Filter by engine and region (AWS; region ignored for GCP)
+
+**Path Parameters:**
+- `projectSlug` (required): Project slug. User must have access to the project.
+- `environmentSlug` (required): Environment slug. Environment must belong to the project.
+
+**Query Parameters:**
+- `engine` (optional): Filter by engine code (e.g., 'mysql', 'postgres')
+- `region` (optional): Filter by region code (e.g., 'us-east-1'); AWS only, ignored for GCP
+- `include_inactive` (optional): Include inactive engine versions (default: false)
+
+**Provider:** The cloud provider is **always taken from the project's connected cloud connection** (no `provider` query param). If the project has no connected cloud or the connection is not active, the API returns 400.
+
+**Response:** Returns **engines and their versions only** (no instance types, no per-region instance rows). Use `database-instance-types` for instance classes.
+
+**Example Requests:**
+```bash
+# Get all database engines and versions (provider from project's connected cloud)
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/prod/database-versions"
+
+# Filter by engine
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/prod/database-versions?engine=mysql"
+
+# Filter by engine and region (AWS)
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/prod/database-versions?engine=mysql&region=us-east-1"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Database engines and versions retrieved successfully",
+  "provider": "aws",
+  "engines": ["mysql", "postgres"],
+  "versionsByEngine": {
+    "mysql": ["8.0.35", "8.0.36"],
+    "postgres": ["13.7", "14.9", "15.4"]
+  },
+  "data": [
+    {
+      "engine": "mysql",
+      "engineVersion": "8.0.35",
+      "metadata": {}
+    },
+    {
+      "engine": "mysql",
+      "engineVersion": "8.0.36",
+      "metadata": {}
+    },
+    {
+      "engine": "postgres",
+      "engineVersion": "13.7",
+      "metadata": {}
+    }
+  ]
+}
+```
+
+#### Get Database Instance Types
+- `GET /api/cloud/:projectSlug/database-instance-types` - Get available database instance types (AWS RDS or GCP Cloud SQL tiers)
+- `GET /api/cloud/:projectSlug/database-instance-types?provider=aws&region=us-east-1` - AWS RDS (db.t3.micro, db.m5.large, etc.)
+- `GET /api/cloud/:projectSlug/database-instance-types?provider=gcp` - GCP Cloud SQL tiers (db-f1-micro, db-n1-standard-*, etc.)
+
+**Path Parameters:**
+- `projectSlug` (required): Project slug. Requires authentication; user must have access to the project.
+
+**Query Parameters:**
+- `provider` (optional): `aws`, `gcp`, or omit. If omitted, **inferred from the project's connected cloud**; if no connection, defaults to `aws`. For **GCP**, returns Cloud SQL machine tiers (db-f1-micro, db-g1-small, db-n1-standard-*, db-n1-highmem-*, db-custom-*) with **reference pricing** (ZONAL and REGIONAL, USD/hr, us-central1); `region` is ignored; `family` filters by tier family (e.g. `db-n1-standard`, `db-f1`).
+- `region` (optional): Filter by region code (e.g., 'us-east-1'); AWS only, ignored for GCP
+- `family` (optional): Filter by instance family (AWS: 'db.t3', 'db.m5'; GCP: 'db-n1-standard', 'db-f1', 'db-custom')
+- `page` (optional): Page number for pagination (default: 1)
+- `limit` (optional): Items per page (default: 50, max: 100)
+
+**Features:**
+- **AWS:** Instance specs, pricing by engine/deployment, metadata. **GCP:** Static tier list with vcpus/memoryGb and reference pricing (ZONAL/REGIONAL, USD/hr, us-central1) for mysql and postgres; `region` = "All GCP regions".
+- Paginated results.
+
+**Example Requests:**
+```bash
+# GCP Cloud SQL tiers (provider inferred from project, or set explicitly)
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/database-instance-types?provider=gcp"
+
+# GCP db-n1-standard family
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/database-instance-types?provider=gcp&family=db-n1-standard"
+
+# AWS RDS
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/database-instance-types?provider=aws&region=us-east-1"
+curl -H "Authorization: Bearer <token>" "https://api.gateways.app/api/cloud/myproject/database-instance-types?provider=aws&family=db.t3"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Database instance types retrieved successfully",
+  "filters": {
+    "provider": "aws",
+    "region": "us-east-1",
+    "family": null
+  },
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 325,
+    "totalPages": 7,
+    "hasNext": true,
+    "hasPrev": false
+  },
+  "count": 50,
+  "data": [
+    {
+      "id": 1,
+      "code": "db.t3.micro",
+      "name": "db.t3.micro",
+      "family": "db.t3",
+      "vcpus": 2,
+      "memoryGb": 1.0,
+      "networkPerformance": "Up to 5 Gigabit",
+      "networkBandwidthGbps": 5.0,
+      "isAvailable": true,
+      "metadata": {
+        "currentGeneration": true,
+        "availabilityZones": ["us-east-1a", "us-east-1b", "us-east-1c"],
+        "multiAZCapable": true,
+        "readReplicaCapable": true
+      },
+      "pricing": [
+        {
+          "engine": "mysql",
+          "engineVersion": "8.0.35",
+          "pricing": [
+            {
+              "deploymentType": "Single-AZ",
+              "purchaseOption": "On-Demand",
+              "pricePerHour": 0.017,
+              "currency": "USD"
+            },
+            {
+              "deploymentType": "Multi-AZ",
+              "purchaseOption": "On-Demand",
+              "pricePerHour": 0.034,
+              "currency": "USD"
+            }
+          ]
+        },
+        {
+          "engine": "postgres",
+          "engineVersion": "13.7",
+          "pricing": [
+            {
+              "deploymentType": "Single-AZ",
+              "purchaseOption": "On-Demand",
+              "pricePerHour": 0.017,
+              "currency": "USD"
+            }
+          ]
+        }
+      ],
+      "region": {
+        "code": "us-east-1",
+        "name": "US East (N. Virginia)"
+      },
+      "provider": "aws"
+    }
+  ]
+}
+```

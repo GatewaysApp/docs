@@ -1,0 +1,206 @@
+---
+title: "09-storage-buckets"
+description: "HTTP API: 09-storage-buckets"
+---
+
+### Storage Bucket Management Endpoints
+
+Storage buckets are created in the customer's cloud account. Supported providers:
+- **AWS**: S3 buckets
+- **GCP**: Cloud Storage buckets
+- **Azure**: Storage Accounts (each "bucket" = one Storage Account in a resource group `deplo-rg-<name>`)
+
+The project's connected cloud provider determines which is used. Create, list, get, patch, and delete work for all three.
+
+#### Create Storage Bucket
+- `POST /api/:projectSlug/:environmentSlug/storage-buckets` - Create a new storage bucket (AWS S3, GCP GCS, or Azure Storage Account)
+
+**Description:** The `name` is used as the bucket/account name. It must follow the provider's naming rules.
+
+**Important:** 
+- **AWS:** 3–63 characters, lowercase, alphanumeric, hyphens, periods; globally unique.
+- **GCP:** 3–63 characters, lowercase letters, numbers, hyphens, underscores, periods; must not start with `goog`.
+- **Azure:** 3–24 characters, **lowercase letters and numbers only** (no hyphens); globally unique. Example: `mybucket` or `appfiles01`.
+
+**Request Body:**
+```json
+{
+  "name": "my-storage-bucket",
+  "region": "us-east-1",  // Optional, defaults to connection region
+  "description": "Bucket for storing application files",  // Optional
+  "versioningEnabled": false,  // Optional, default: false
+  "publicAccess": false,  // Optional, default: false (public access blocked). true = allow public access
+  "positionX": 100,  // Optional, canvas X coordinate
+  "positionY": 150   // Optional, canvas Y coordinate
+}
+```
+Encryption is always enabled (true) in the backend; it is not a request field.
+
+**S3 Bucket Naming Rules:**
+- Must be 3 to 63 characters long
+- Must begin and end with a letter or number
+- Can contain lowercase letters (a-z), numbers (0-9), periods (.), and hyphens (-)
+- Cannot contain consecutive periods (..)
+- Cannot be formatted as an IP address (e.g., 192.168.1.1)
+- Cannot start with "xn--" or end with "-s3alias"
+- Must be globally unique across all AWS accounts
+
+**Example:**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/storage-buckets" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "app-files",
+    "region": "us-east-1",
+    "description": "Storage for application files and backups",
+    "versioningEnabled": true,
+    "publicAccess": false,
+    "positionX": 300,
+    "positionY": 200
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Storage bucket created successfully",
+  "data": {
+    "id": 1,
+    "name": "app-files",
+    "awsBucketName": "app-files",
+    "region": "us-east-1",
+    "description": "Storage for application files and backups",
+    "versioningEnabled": true,
+    "publicAccess": false,
+    "position": {
+      "x": 300,
+      "y": 200
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+Encryption is always enabled in the backend; it is not returned in the response. For GCP the response includes `gcpBucketName`; for Azure, `azureStorageAccountName`.
+
+**Error Response (Invalid bucket name):**
+```json
+{
+  "error": "Invalid bucket name",
+  "message": "Bucket name must be at least 3 characters long"
+}
+```
+
+**Error Response (Bucket already exists):**
+```json
+{
+  "error": "Bucket name already exists",
+  "message": "A bucket with name \"app-files\" already exists in AWS. Bucket names must be globally unique."
+}
+```
+
+#### List Storage Buckets
+- `GET /api/:projectSlug/:environmentSlug/storage-buckets` - List all storage buckets for a project environment
+
+**Query Parameters:**
+- None (filtering is handled by project/environment slugs in the path)
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Storage buckets retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "name": "app-files",
+      "awsBucketName": "deplo-codepanel-master-app-files-a1b2c3d4",
+      "region": "us-east-1",
+      "description": "Storage for application files",
+      "versioningEnabled": true,
+      "publicAccess": false,
+      "position": {
+        "x": 300,
+        "y": 200
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "backups",
+      "awsBucketName": "deplo-codepanel-master-backups-e5f6g7h8",
+      "region": "us-east-1",
+      "description": "Backup storage",
+      "versioningEnabled": false,
+      "publicAccess": false,
+      "position": {
+        "x": 400,
+        "y": 250
+      },
+      "createdAt": "2024-01-15T11:00:00.000Z",
+      "updatedAt": "2024-01-15T11:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### Get Storage Bucket Details
+- `GET /api/:projectSlug/:environmentSlug/storage-buckets/:bucketId` - Get details of a specific storage bucket
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/storage-buckets/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Storage bucket retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "app-files",
+    "awsBucketName": "deplo-codepanel-master-app-files-a1b2c3d4",
+    "region": "us-east-1",
+    "description": "Storage for application files and backups",
+    "versioningEnabled": true,
+    "publicAccess": false,
+    "position": {
+      "x": 300,
+      "y": 200
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### Delete Storage Bucket
+
+**Path:** `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`  
+Use the bucket’s **database ID** as `resourceId`. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id). All resource types (including storage buckets) are deleted via this unified path.
+
+**Query parameter:** `deleteFromCloud` (optional)
+- `true` (default): Delete the bucket from the cloud (AWS S3, GCP GCS, or Azure Storage), then remove resource connections and soft-delete the resource. The bucket **must be empty** before cloud deletion. **Azure:** The storage account must be empty (delete all blobs and containers first).
+- `false`: Only remove the resource from the database (and its resource connections). The bucket is **not** deleted from the cloud.
+
+**Example (delete from cloud, default):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example (remove from database only):**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1?deleteFromCloud=false" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error (bucket not empty):** When `deleteFromCloud=true`, the API returns an error if the bucket contains objects—e.g. `"Cannot delete bucket: \"...\" is not empty. Please delete all objects and versions first."`

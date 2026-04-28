@@ -1,0 +1,249 @@
+---
+title: "Subdomain Management"
+description: "HTTP API: Subdomain Management"
+---
+
+# Subdomain Management API
+
+The Subdomain Management API allows you to manage subdomains within the unified resource system. Subdomains represent logical divisions of a domain (e.g., blog.example.com, support.example.com, docs.example.com).
+
+## Base URL
+
+All subdomain endpoints are prefixed with:
+```
+/api/:projectSlug/:environmentSlug/subdomains
+```
+
+Where:
+- `projectSlug` - The slug of your project
+- `environmentSlug` - The slug of your environment
+
+---
+
+## Create Subdomain
+
+Create a new subdomain resource.
+
+**Endpoint:** `POST /api/:projectSlug/:environmentSlug/subdomains`
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "name": "blog",                    // Required - Subdomain name (e.g., "blog", "support", "docs")
+  "positionX": 100,                  // Optional - Canvas X coordinate
+  "positionY": 200                   // Optional - Canvas Y coordinate
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST "https://api.gateways.app/api/my-project/production/subdomains" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "blog"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Subdomain created successfully",
+  "data": {
+    "id": 1,
+    "name": "blog",
+    "subdomainName": "blog",
+    "status": "active",
+    "position": {
+      "x": 100,
+      "y": 200
+    },
+    "project": {
+      "id": 1,
+      "slug": "my-project",
+      "name": "My Project"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "production",
+      "name": "Production"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields, invalid subdomain name format, or duplicate subdomain
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Project access denied
+- `404 Not Found`: Project or environment not found
+- `500 Internal Server Error`: Failed to create subdomain
+
+**Subdomain Name Validation:**
+- Must contain only alphanumeric characters and hyphens
+- Cannot start or end with a hyphen
+- Case-insensitive (will be normalized to lowercase)
+
+---
+
+## List Subdomains
+
+Get all subdomains for a project and environment.
+
+**Endpoint:** `GET /api/:projectSlug/:environmentSlug/subdomains`
+
+**Authentication:** Required
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/my-project/production/subdomains" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Subdomains retrieved successfully",
+  "count": 3,
+  "data": [
+    {
+      "id": 1,
+      "name": "blog",
+      "subdomainName": "blog",
+      "status": "active",
+      "position": {
+        "x": 100,
+        "y": 200
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "support",
+      "subdomainName": "support",
+      "status": "active",
+      "position": {
+        "x": 300,
+        "y": 200
+      },
+      "createdAt": "2024-01-15T11:00:00.000Z",
+      "updatedAt": "2024-01-15T11:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "name": "docs",
+      "subdomainName": "docs",
+      "status": "active",
+      "position": {
+        "x": 500,
+        "y": 200
+      },
+      "createdAt": "2024-01-15T12:00:00.000Z",
+      "updatedAt": "2024-01-15T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized`: Missing or invalid authentication token
+- `404 Not Found`: Project or environment not found
+- `500 Internal Server Error`: Failed to retrieve subdomains
+
+---
+
+## Get Subdomain
+
+Get details of a specific subdomain.
+
+**Endpoint:** `GET /api/:projectSlug/:environmentSlug/subdomains/:id`
+
+**Authentication:** Required
+
+**Parameters:**
+- `id` (path) - The subdomain ID
+
+**Example Request:**
+```bash
+curl "https://api.gateways.app/api/my-project/production/subdomains/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Subdomain retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "blog",
+    "subdomainName": "blog",
+    "status": "active",
+    "position": {
+      "x": 100,
+      "y": 200
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid subdomain ID
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Access denied to this subdomain
+- `404 Not Found`: Subdomain not found
+- `500 Internal Server Error`: Failed to retrieve subdomain
+
+---
+
+## Delete Subdomain
+
+Subdomain deletion is performed **only** via the unified resources API:
+
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+Use the subdomain resource’s **database ID** (from the list or get-detail response). See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id). This performs a soft delete (subdomain marked as deleted).
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/my-project/production/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Responses:**
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Access denied
+- `404 Not Found`: Resource not found
+- `500 Internal Server Error`: Failed to delete subdomain
+
+**Note:** This performs a soft delete. The subdomain record will be marked as deleted but can potentially be restored.
+
+---
+
+## Subdomains in Unified Resources API
+
+Subdomains are also included in the unified resources API endpoints:
+
+- `GET /api/:projectSlug/:environmentSlug/resources?type=subdomain` - List subdomains for a specific project and environment
+
+---
+
+## Notes
+
+1. **Subdomain vs DNS Records**: Subdomains are logical resource entities in the system. They do not automatically create DNS records. To make a subdomain functional, you need to:
+   - Create DNS records (A, AAAA, or CNAME) pointing to your resources
+   - Use the DNS Management API or connect the subdomain to other resources via resource connections
+
+2. **Duplicate Prevention**: Each subdomain name + parent domain combination must be unique within a project and environment. Attempting to create a duplicate will result in a `400 Bad Request` error.
+
+3. **Name Normalization**: Subdomain names are normalized to lowercase when stored. The name "Blog" will be stored as "blog".
+
+6. **Resource Connections**: Subdomains can be connected to other resources (for example static websites) via the Resource Connections API to establish relationships between subdomains and their target resources.
+
+7. **Position Coordinates**: Position coordinates (positionX, positionY) are used for visual representation on canvas views. They are optional and can be updated later.
+

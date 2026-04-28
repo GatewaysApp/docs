@@ -1,0 +1,43 @@
+---
+title: Install
+description: Install the gateways binary on macOS, Linux, Windows, or build from source.
+---
+
+## macOS and Linux
+
+The installer expects **bash**:
+
+```bash
+curl -fsSL https://gws.run/install.sh | bash
+```
+
+This installs a prebuilt binary under `~/.local/bin` and updates `~/.zshrc` / `~/.bashrc` when present. Open a new terminal, then run `gateways` or `gws-cli`.
+
+## Windows
+
+PowerShell (x64 or ARM64):
+
+```powershell
+iwr https://gws.run/install.ps1 -useb | iex
+```
+
+Binaries go to `%USERPROFILE%\.local\bin`. Open a new window or refresh `PATH`.
+
+## From a repository checkout
+
+From the `cli` directory (where `go.mod` lives), run `./install.sh`. Options include `--no-modify-shell` and `--no-reexec`. Set `GATEWAYS_INSTALL_DIR` to change the install path, or `GATEWAYS_SOURCE_DIR` to build from source.
+
+## Build from source
+
+Requires **Go 1.21+**:
+
+```bash
+cd cli
+CGO_ENABLED=0 go build -o gateways ./cmd/gateways
+./gateways version
+```
+
+## Next
+
+- **[Project file](/gateways/cli/project-file)** — Configure `.gateways.yaml` after install.
+- **[Introduction](/gateways/cli)** — Quick start and API base URL.

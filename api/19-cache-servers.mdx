@@ -1,0 +1,464 @@
+---
+title: "Sync cache server status from cloud provider"
+description: "HTTP API: Sync cache server status from cloud provider"
+---
+
+### Cache Server Endpoints
+
+Cache servers provide serverless ElastiCache instances in AWS. GatewaysApp supports Valkey, Memcached, and Redis OSS engines with automatic security group and subnet management.
+
+#### Create Cache Server
+- `POST /api/:projectSlug/:environmentSlug/cache-servers` - Create a new serverless ElastiCache cache in AWS
+
+**Description:** Creates a serverless ElastiCache cache with:
+- Automatic security group assignment (uses default security group for project/environment)
+- Support for Valkey, Memcached, and Redis OSS engines
+- Serverless architecture (automatic scaling)
+- Configurable engine version
+
+**Request Body:**
+```json
+{
+  "name": "my-cache",
+  "cacheEngine": "valkey",         // Required: "valkey", "memcached", or "redis"
+  "engineVersion": "7.2",          // Optional: Engine version (e.g., "7.2", "1.2")
+  "region": "us-east-1",           // Required: AWS region code (e.g., us-east-1, eu-west-1, ap-south-1)
+  "positionX": 100,                // Optional: Canvas X coordinate
+  "positionY": 200                 // Optional: Canvas Y coordinate
+}
+```
+
+**Cache Server Naming:**
+- Cache name will be sanitized to meet AWS requirements (1-40 characters, alphanumeric and hyphens only)
+- Automatically converted to lowercase
+- Invalid characters replaced with hyphens
+- Must contain at least one alphanumeric character
+- The sanitized name is used directly as the AWS serverless cache name
+
+**Supported Cache Engines:**
+- `valkey` - Valkey (Redis fork, default port: 6379)
+- `memcached` - Memcached (default port: 11211)
+- `redis` - Redis OSS (default port: 6379)
+
+**Querying Available Versions:**
+Before creating a cache server, query available engine versions:
+```bash
+GET /api/cloud/:projectSlug/cache-versions
+GET /api/cloud/:projectSlug/cache-versions?engine=redis
+```
+Replace `:projectSlug` with your project slug. Requires authentication. Returns versions by provider: AWS ElastiCache (redis, valkey, memcached); GCP Memorystore (redis and memcached only, no Valkey); Azure Cache for Redis (redis only). Run `npm run fetch-cache-engine-versions` for AWS and `npm run fetch-gcp-cache-engine-versions` for GCP. See [Cloud Infrastructure API Documentation](/api/12-cloud-infrastructure) for details.
+
+**Querying Provisioned Cache Instance Types (Azure, GCP):**
+For **Azure** and **GCP** (provisioned caches, no serverless), also use the cache instance types API to list tiers (e.g. Basic C0, Standard C1, M1):
+```bash
+GET /api/cloud/:projectSlug/cache-instance-types
+GET /api/cloud/:projectSlug/cache-instance-types?region=eastus&engine=redis&family=Basic
+```
+The `cache-versions` response includes `provisionedInstanceTypesAvailable` and `cacheInstanceTypesEndpoint` when the provider is Azure or GCP. Run `npm run seed:cache-instance-types` to populate data, then `npm run fetch-cache-instance-pricing` to fill `price_per_hour` (Azure: Retail API; GCP: reference rates). See [Cloud Infrastructure API – Get Cache Instance Types](/api/12-cloud-infrastructure#get-cache-instance-types) for full details.
+
+**Important Notes:**
+- Cache servers are created as serverless (automatic scaling, no infrastructure management)
+- Cache creation can take several minutes to complete
+- The API returns immediately with status "creating"
+- Use the sync endpoint or AWS Console to check creation progress
+- Default security groups are automatically created and reused per project/environment
+- Serverless caches automatically scale based on usage
+
+**Example (Valkey Cache):**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/cache-servers" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "production-cache",
+    "cacheEngine": "valkey",
+    "engineVersion": "7.2",
+    "region": "us-east-1",
+    "positionX": 300,
+    "positionY": 400
+  }'
+```
+
+**Example (Redis Cache):**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/cache-servers" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "session-cache",
+    "cacheEngine": "redis",
+    "engineVersion": "7.2",
+    "region": "us-east-1"
+  }'
+```
+
+**Example (Memcached Cache):**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/cache-servers" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "data-cache",
+    "cacheEngine": "memcached",
+    "region": "us-east-1"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Cache server created successfully",
+  "data": {
+    "id": 1,
+    "name": "production-cache",
+    "cacheEngine": "valkey",
+    "engineVersion": "7.2",
+    "cacheType": "serverless",
+    "region": "us-east-1",
+    "status": "creating",
+    "endpoint": null,
+    "port": 6379,
+    "position": {
+      "x": 300,
+      "y": 400
+    },
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "Master"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Error Response (No cloud connection):**
+```json
+{
+  "error": "No cloud connection",
+  "message": "Project does not have a cloud connection. Please connect a cloud provider first."
+}
+```
+
+**Error Response (Insufficient permissions):**
+```json
+{
+  "error": "Insufficient permissions",
+  "message": "Your AWS IAM role does not have the required permissions to create ElastiCache cache servers.",
+  "details": "User: arn:aws:sts::... is not authorized to perform: elasticache:CreateServerlessCache...",
+  "suggestion": "Please update your CloudFormation stack to include the latest ElastiCache permissions."
+}
+```
+
+#### List Cache Servers
+- `GET /api/:projectSlug/:environmentSlug/cache-servers` - List all cache servers for a project environment
+
+**Query Parameters:**
+- None (filtering is handled by project/environment slugs in the path)
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/cache-servers" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Cache servers retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "production-cache",
+      "cacheEngine": "valkey",
+      "engineVersion": "7.2",
+      "cacheType": "serverless",
+      "region": "us-east-1",
+      "status": "available",
+      "endpoint": "production-cache.abc123.cache.amazonaws.com",
+      "port": 6379,
+      "position": {
+        "x": 300,
+        "y": 400
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:35:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "session-cache",
+      "cacheEngine": "redis",
+      "engineVersion": "7.2",
+      "cacheType": "serverless",
+      "region": "us-east-1",
+      "status": "available",
+      "endpoint": "session-cache.xyz789.cache.amazonaws.com",
+      "port": 6379,
+      "position": {
+        "x": 500,
+        "y": 600
+      },
+      "createdAt": "2024-01-15T11:00:00.000Z",
+      "updatedAt": "2024-01-15T11:05:00.000Z"
+    }
+  ]
+}
+```
+
+#### Get Cache Server Details
+- `GET /api/:projectSlug/:environmentSlug/cache-servers/:id` - Get details of a specific cache server
+
+**Path Parameters:**
+- `id` - Cache server database ID (not AWS resource ID)
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/cache-servers/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Cache server retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "production-cache",
+    "cacheEngine": "valkey",
+    "engineVersion": "7.2",
+    "cacheType": "serverless",
+    "region": "us-east-1",
+    "status": "available",
+    "endpoint": "production-cache.abc123.cache.amazonaws.com",
+    "port": 6379,
+    "position": {
+      "x": 300,
+      "y": 400
+    },
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "Master"
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:35:00.000Z"
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Cache server not found",
+  "message": "The specified cache server does not exist or you do not have access"
+}
+```
+
+#### Sync Cache Server Status from Cloud Provider
+
+**Note:** Cache server sync is now performed through the unified resources API. Use the unified sync endpoint instead of the type-specific endpoint.
+
+**Unified Sync Endpoint:** `PUT /api/:projectSlug/:environmentSlug/resources/:resourceId/sync`
+
+See [Resources API — Sync Resource from Cloud Provider](/api/05-resources#sync-resource-from-cloud-provider) for details.
+
+**Description:** 
+- Fetches the latest cache server details from the cloud provider (AWS ElastiCache Serverless, GCP Memorystore Redis, or Azure Cache for Redis)
+- Updates the cache server record with current status, endpoint, port, and engine version
+- Useful for checking creation progress or refreshing cache server information
+
+**Example Request:**
+```bash
+# Sync cache server status from cloud provider
+# resourceId is the database ID (numeric)
+curl -X PUT "https://api.gateways.app/api/codepanel/master/resources/1/sync" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Cache server synced successfully",
+  "data": {
+    "id": 1,
+    "status": "available",
+    "endpoint": "production-cache.abc123.cache.amazonaws.com",
+    "port": 6379,
+    "engineVersion": "7.2",
+    "updatedAt": "2024-01-15T10:35:00.000Z"
+  }
+}
+```
+
+**Error Response (Cache not found in Cloud Provider):**
+```json
+{
+  "message": "Cache server not found in AWS - marked as deleted",
+  "data": {
+    "id": 1,
+    "status": "deleted"
+  }
+}
+```
+
+#### Delete Cache Server
+
+Cache server deletion is performed **only** via the unified resources API:
+
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+Use the cache server’s **database ID**. The service deletes the ElastiCache/Memorystore/Redis resource from the cloud, removes all resource connections, then soft-deletes the resource. Deletion can take several minutes. If the cache no longer exists in the cloud, the database record is still removed. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id).
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Error Response (No cloud connection):**
+```json
+{
+  "error": "No cloud connection",
+  "message": "Project does not have a cloud connection"
+}
+```
+
+## Cache Server Connection
+
+Once a cache server is created and its status becomes `available`, you can connect to it using:
+
+- **Endpoint:** The `endpoint` field in the cache server response
+- **Port:** The `port` field (6379 for Redis/Valkey, 11211 for Memcached)
+
+**Example Connection String (Redis/Valkey):**
+```
+redis://production-cache.abc123.cache.amazonaws.com:6379
+```
+
+**Example Connection String (Memcached):**
+```
+production-cache.abc123.cache.amazonaws.com:11211
+```
+
+**Note:** Ensure that your security group rules allow inbound connections on the cache port from your application servers or IP addresses. The default security group created for your project/environment may need firewall rules added to allow cache connections.
+
+### Cache Server in Unified Resources API
+
+Cache servers are also included in the unified resources API endpoints:
+
+#### List All Resources (includes cache servers)
+- `GET /api/:projectSlug/:environmentSlug/resources` - See [Resources API Documentation](/api/05-resources)
+- `GET /api/:projectSlug/:environmentSlug/resources` - See [Resources API Documentation](/api/05-resources)
+
+**Filter by cache server type:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/resources?type=cache_server" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### Get Cache Server via Resources API
+- `GET /api/:projectSlug/:environmentSlug/resources/cache_server/:id` - Get cache server details via unified resources API
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/resources/cache_server/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Cache server details retrieved successfully",
+  "data": {
+    "id": 1,
+    "resourceType": "cache_server",
+    "resourceId": "production-cache",
+    "name": "production-cache",
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "Master"
+    },
+    "region": "us-east-1",
+    "status": "available",
+    "metadata": {
+      "cacheEngine": "valkey",
+      "engineVersion": "7.2",
+      "cacheType": "serverless",
+      "endpoint": "production-cache.abc123.cache.amazonaws.com",
+      "port": 6379
+    },
+    "position": {
+      "x": 300,
+      "y": 400
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:35:00.000Z"
+  }
+}
+```
+
+## Cache Server Status Values
+
+Cache servers can have the following status values:
+- `creating` - Cache server is being created in AWS
+- `available` - Cache server is available and ready to use
+- `modifying` - Cache server is being modified
+- `deleting` - Cache server is being deleted
+- `deleted` - Cache server has been deleted (marked in database)
+- Other AWS-specific status values may also appear
+
+## Cache Engine Details
+
+### Valkey
+- **Description:** Open-source fork of Redis, compatible with Redis commands
+- **Default Port:** 6379
+- **Use Cases:** Session storage, caching, real-time analytics
+- **Compatibility:** Redis protocol compatible
+
+### Redis OSS
+- **Description:** Open-source Redis (Redis Open Source)
+- **Default Port:** 6379
+- **Use Cases:** Session storage, caching, pub/sub messaging
+- **Compatibility:** Full Redis command set
+
+### Memcached
+- **Description:** High-performance distributed memory caching system
+- **Default Port:** 11211
+- **Use Cases:** Simple key-value caching, session storage
+- **Compatibility:** Memcached protocol
+
+## Resource Connections
+
+Cache servers can be connected to other resources via the Resource Connections API:
+
+- Applications can connect to cache servers for caching functionality
+- Instances/servers can connect to cache servers for data caching
+
+See [Resource Connections API Documentation](/api/07-resource-connections) for more information.
+
+## Resource Positions
+
+Cache server positions on the canvas can be updated using the Resource Positions API:
+
+```bash
+PATCH /api/:projectSlug/:environmentSlug/resources/:resourceId/position
+```
+
+See [Resource Positions API Documentation](/api/10-resource-positions) for more information.
+

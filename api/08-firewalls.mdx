@@ -1,0 +1,398 @@
+---
+title: "08-firewalls"
+description: "HTTP API: 08-firewalls"
+---
+
+### Firewall Management Endpoints
+
+Firewalls are AWS security groups that control inbound and outbound network traffic for your instances. You can create firewall resources and connect them to instances using resource connections.
+
+**Important Notes:**
+- When you create a server/instance, a default security group is automatically created and attached (named `GatewaysApp-Default-{projectSlug}-{environmentSlug}`). This security group is not added as a firewall resource in the database - it's just attached to the instance.
+- You can create custom firewall resources separately and connect them to instances using resource connections.
+- Firewall rules are stored in the firewall resource's `metadata.rules` (inbound/outbound arrays). Rule IDs are strings (e.g. `rule-1234567890-abc123`) and are used when deleting a rule.
+
+#### Create Firewall
+- `POST /api/:projectSlug/:environmentSlug/firewalls` - Create a new firewall resource (AWS security group) with optional region and rules
+
+**Request Body:**
+```json
+{
+  "name": "Web Server Firewall",
+  "region": "us-east-1",  // Optional: AWS/GCP/Azure region (defaults to connection region, e.g. us-east-1, us-central1, eastus)
+  "positionX": 100,  // Optional: Position on canvas
+  "positionY": 150,  // Optional: Position on canvas
+  "rules": [  // Optional: Array of firewall rules to create
+    {
+      "ruleType": "inbound",
+      "protocol": "tcp",
+      "port": 80,  // Can be a number, string range "80-443", or array [80, 443]
+      "sourceValue": "0.0.0.0/0"  // IPv4/IPv6 CIDR, security group ID (sg-xxx), or prefix list ID (pl-xxx)
+    },
+    {
+      "ruleType": "inbound",
+      "protocol": "tcp",
+      "port": 443,
+      "sourceValue": "0.0.0.0/0"
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -X POST "https://api.gateways.app/api/codepanel/master/firewalls" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Web Server Firewall",
+    "region": "us-east-1",
+    "positionX": 100,
+    "positionY": 150
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Firewall created successfully",
+  "data": {
+    "id": 1,
+    "name": "Web Server Firewall",
+    "awsSecurityGroupId": "sg-1234567890abcdef0",
+    "region": "us-east-1",
+    "position": {
+      "x": 100,
+      "y": 150
+    },
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "Master"
+    },
+    "rules": {
+      "inbound": [
+        {
+          "id": "rule-1234567890-abc123",
+          "ruleType": "inbound",
+          "protocol": "tcp",
+          "portFrom": 80,
+          "portTo": 80,
+          "sourceType": "ipv4",
+          "sourceValue": "0.0.0.0/0",
+          "description": "Allow HTTP from anywhere"
+        },
+        {
+          "id": "rule-1234567891-def456",
+          "ruleType": "inbound",
+          "protocol": "tcp",
+          "portFrom": 443,
+          "portTo": 443,
+          "sourceType": "ipv4",
+          "sourceValue": "0.0.0.0/0",
+          "description": "Allow HTTPS from anywhere"
+        }
+      ],
+      "outbound": []
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### List Firewalls
+- `GET /api/:projectSlug/:environmentSlug/firewalls` - List all firewalls for a project environment
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/firewalls" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Firewalls retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": 1,
+      "name": "Web Server Firewall",
+      "awsSecurityGroupId": "sg-1234567890abcdef0",
+      "region": "us-east-1",
+      "position": {
+        "x": 100,
+        "y": 150
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+#### Get Firewall Details
+- `GET /api/:projectSlug/:environmentSlug/firewalls/:firewallId` - Get details of a specific firewall including its rules
+
+**Example:**
+```bash
+curl "https://api.gateways.app/api/codepanel/master/firewalls/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Firewall retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "Web Server Firewall",
+    "awsSecurityGroupId": "sg-1234567890abcdef0",
+    "region": "us-east-1",
+    "project": {
+      "id": 1,
+      "slug": "codepanel",
+      "name": "CodePanel"
+    },
+    "environment": {
+      "id": 1,
+      "slug": "master",
+      "name": "Master"
+    },
+    "position": {
+      "x": 100,
+      "y": 150
+    },
+    "rules": {
+      "inbound": [
+        {
+          "id": 1,
+          "ruleType": "inbound",
+          "protocol": "tcp",
+          "portFrom": 80,
+          "portTo": 80,
+          "sourceType": "ipv4",
+          "sourceValue": "0.0.0.0/0",
+          "description": "Allow HTTP from anywhere"
+        },
+        {
+          "id": 2,
+          "ruleType": "inbound",
+          "protocol": "tcp",
+          "portFrom": 443,
+          "portTo": 443,
+          "sourceType": "ipv4",
+          "sourceValue": "0.0.0.0/0",
+          "description": "Allow HTTPS from anywhere"
+        }
+      ],
+      "outbound": []
+    },
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### Update Firewall
+- `PATCH /api/:projectSlug/:environmentSlug/firewalls/:firewallId` - Update firewall name, position, or add firewall rules
+
+**Request Body:**
+```json
+{
+  "name": "Updated Firewall Name",  // Optional
+  "positionX": 200,  // Optional
+  "positionY": 250,  // Optional
+  "rules": [  // Optional: Array of firewall rules to add
+    {
+      "ruleType": "inbound",
+      "protocol": "tcp",
+      "port": 22,  // Can be a number, string range "80-443", or array [80, 443]
+      "sourceValue": "203.0.113.0/24"  // IPv4/IPv6 CIDR, security group ID (sg-xxx), or prefix list ID (pl-xxx)
+    }
+  ]
+}
+```
+
+**Note:** The `rules` array will add new rules to the firewall. To remove rules, use the DELETE endpoint for individual rules.
+
+**Example:**
+```bash
+curl -X PATCH "https://api.gateways.app/api/codepanel/master/firewalls/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Firewall Name"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "message": "Firewall updated successfully",
+  "data": {
+    "id": 1,
+    "name": "Updated Firewall Name",
+    "position": {
+      "x": 200,
+      "y": 250
+    },
+    "rules": {
+      "inbound": [
+        {
+          "id": 1,
+          "ruleType": "inbound",
+          "protocol": "tcp",
+          "portFrom": 80,
+          "portTo": 80,
+          "sourceType": "ipv4",
+          "sourceValue": "0.0.0.0/0",
+          "description": "Allow HTTP from anywhere"
+        },
+        {
+          "id": 3,
+          "ruleType": "inbound",
+          "protocol": "tcp",
+          "portFrom": 22,
+          "portTo": 22,
+          "sourceType": "ipv4",
+          "sourceValue": "203.0.113.0/24",
+          "description": "Allow SSH from office network"
+        }
+      ],
+      "outbound": []
+    },
+    "updatedAt": "2024-01-15T11:00:00.000Z"
+  }
+}
+```
+
+#### Delete Firewall
+
+Firewall (resource) deletion is performed **only** via the unified resources API:
+
+- `DELETE /api/:projectSlug/:environmentSlug/resources/:resourceId`
+
+Use the firewall’s **database ID**. The service deletes the cloud security group (AWS, GCP, Azure), removes all resource connections, then soft-deletes the resource. See [Resources API — Delete Resource by ID](/api/05-resources#delete-resource-by-id).
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/resources/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Firewall Rule Format:**
+
+Rules are provided as an optional array in the `rules` field when creating or updating a firewall. Each rule object has the following structure:
+
+```json
+{
+  "ruleType": "inbound",  // or "outbound"
+  "protocol": "tcp",      // tcp, udp, icmp, or "-1" for all protocols
+  "port": 80,             // Can be a number (single port), string range "80-443", or array [80, 443]. Use null for all ports.
+  "sourceValue": "0.0.0.0/0"  // IPv4/IPv6 CIDR, security group ID (sg-xxx), or prefix list ID (pl-xxx). Type is auto-detected.
+}
+```
+
+**Supported Protocols:**
+- `tcp` - Transmission Control Protocol
+- `udp` - User Datagram Protocol
+- `icmp` - Internet Control Message Protocol
+- `-1` or `all` - All protocols
+
+**Port Format:**
+- Single port: `"port": 80` or `"port": "80"`
+- Port range: `"port": "80-443"` or `"port": [80, 443]`
+- All ports: `"port": null` or omit the field
+
+**Source Value Format (type is auto-detected):**
+- IPv4 CIDR: `"0.0.0.0/0"`, `"10.0.0.0/8"` → detected as `ipv4`
+- IPv6 CIDR: `"::/0"`, `"2001:db8::/32"` → detected as `ipv6`
+- Security Group ID: `"sg-1234567890abcdef0"` → detected as `security_group`
+- Prefix List ID: `"pl-1234567890abcdef0"` → detected as `prefix_list`
+
+**Rule Examples:**
+
+Allow SSH (port 22) from a specific IP:
+```json
+{
+  "ruleType": "inbound",
+  "protocol": "tcp",
+  "port": 22,
+  "sourceValue": "203.0.113.0/24"
+}
+```
+
+Allow HTTPS (port 443) from anywhere:
+```json
+{
+  "ruleType": "inbound",
+  "protocol": "tcp",
+  "port": 443,
+  "sourceValue": "0.0.0.0/0"
+}
+```
+
+Allow port range (80-443) from anywhere:
+```json
+{
+  "ruleType": "inbound",
+  "protocol": "tcp",
+  "port": "80-443",
+  "sourceValue": "0.0.0.0/0"
+}
+```
+
+Allow MySQL (port 3306) from another security group:
+```json
+{
+  "ruleType": "inbound",
+  "protocol": "tcp",
+  "port": 3306,
+  "sourceValue": "sg-0987654321fedcba0"
+}
+```
+
+Allow all outbound traffic (all ports, all protocols):
+```json
+{
+  "ruleType": "outbound",
+  "protocol": "-1",
+  "port": null,
+  "sourceValue": "0.0.0.0/0"
+}
+```
+
+Allow from IPv6 address:
+```json
+{
+  "ruleType": "inbound",
+  "protocol": "tcp",
+  "port": 443,
+  "sourceValue": "2001:db8::/32"
+}
+```
+
+#### Remove Firewall Rule
+- `DELETE /api/:projectSlug/:environmentSlug/firewalls/:firewallId/rules/:ruleId` - Remove a rule from a firewall (ruleId is the rule's string id from the rule object, e.g. `rule-1234567890-abc123`)
+
+**Example:**
+```bash
+curl -X DELETE "https://api.gateways.app/api/codepanel/master/firewalls/1/rules/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+**Example Response:**
+```json
+{
+  "message": "Firewall rule removed successfully"
+}
+```
+
+**Note:** Firewall rule creation and deletion are now automatically synced with AWS security groups. When you create, update, or delete firewall rules, the corresponding changes are immediately applied to the AWS Security Group. The default AWS outbound "All traffic" rule is automatically removed if no outbound rules are specified.

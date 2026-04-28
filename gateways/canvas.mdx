@@ -1,0 +1,53 @@
+---
+title: Architecture canvas
+description: Canvas controls, resource provisioning, cloud account linkage, and inter-resource connections in the Gateways console.
+---
+
+The **Dashboard** navigation item opens the **architecture canvas**: a two-dimensional pan-and-zoom surface on which resources render as cards. The visible inventory is limited to the **currently selected project and environment**.
+
+## Toolbar
+
+A vertical toolbar is shown when the canvas is active.
+
+| Control | Function |
+| --- | --- |
+| Zoom in / out | Adjusts magnification in fixed increments. |
+| Zoom percentage display | Indicates current scale; may be clickable to reset zoom and pan to defaults for the active environment. |
+| Fullscreen | Toggles browser fullscreen for the document. |
+| Refresh | Requests a fresh resource list from the API. |
+| Undo / Redo | Reverts or reapplies **card position** changes. History is scoped to the active workspace, project, and environment. |
+
+Zoom level and pan offset are persisted in browser storage per scope so returning to the same environment restores the prior view.
+
+## Resource creation
+
+The **Create** action opens a modal resource catalog. After type selection, the console presents type-specific configuration (regions, sizes, runtimes, and similar parameters). Documentation for each type lives under **[Resource types](/gateways/resources)** (hub) and **[per-type pages](/gateways/resources/server)** (for example Server, Database, Function).
+
+- Empty canvas: an empty-state layout may present the same creation entry point centrally.
+- Availability: creation is suppressed while an asynchronous create operation is in progress or when authorization denies create permission.
+
+## Cloud provider linkage
+
+Provisioning typically requires a cloud account linked at the project level. If no account is linked, the canvas surfaces a **connect cloud** path. Supported providers (for example AWS, Azure, GCP) depend on platform configuration. Provider onboarding may include external consent or IAM role configuration outside the console.
+
+## Resource connections
+
+Connections represent relationships between resources (dependencies, routing, or other semantics defined by the platform). Operation summary:
+
+1. Initiate a connection from a resource card using the control provided for that type.
+2. Drag toward a valid target; eligible cards are indicated visually.
+3. Complete the connection or cancel; cancel may be bound to the Escape key during an active drag.
+
+Connection failures may expose a **retry** action when the platform reports a recoverable state.
+
+## Resource inspection
+
+Selecting a card opens detail or configuration surfaces appropriate to the resource type and lifecycle state. Some types launch auxiliary panels (terminal, IDE, object browser, upload). Those panels are bound to the active project and environment and are cleared when the user changes scope.
+
+## Authorization
+
+Role assignments may restrict create, update, delete, or workspace-level operations. Restricted actions appear disabled or are omitted.
+
+## Loading and error handling
+
+The interface defers empty-state rendering until the initial resource fetch for the environment completes or fails. Transient network or server errors (for example 5xx, 429, or connectivity loss) may trigger automatic retry. Client authentication failures (401) and authorization failures (403) are not retried; re-authentication or elevated permissions are required.
