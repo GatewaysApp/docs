@@ -1,11 +1,11 @@
 # Gateways documentation
 
-This directory is the [Mintlify](https://mintlify.com) documentation site for Gateways (guides, console help, and API reference). Configuration lives in **`docs.json`** at the root of this folder.
+This directory is the **Gateways** product documentation (guides, console help, and API reference). Site settings and navigation live in **`docs.json`** at the root of this folder.
 
 ## Prerequisites
 
 - Node.js 18+
-- [Mint CLI](https://www.npmjs.com/package/mint) (`npm i -g mint`)
+- Docs CLI: `npm i -g mint` ([`mint` on npm](https://www.npmjs.com/package/mint))
 
 ## Local preview
 
@@ -31,9 +31,9 @@ If pages 404, confirm you started the dev server from the folder that contains `
 
 ## Deploy
 
-If this repo is connected to Mintlify, pushes to the default branch deploy automatically. Organization settings (GitHub app, custom domain) are managed in the [Mintlify dashboard](https://dashboard.mintlify.com).
+If the hosted docs are wired to this repository, pushes to the default branch usually deploy automatically. GitHub integration and the public docs URL are configured in your team’s docs hosting dashboard.
 
 ## Troubleshooting
 
-- **CLI / preview issues:** run `mint update`, or `mintlify install` if the CLI suggests it.
-- **Mintlify docs:** https://mintlify.com/docs
+- **CLI / preview issues:** run `mint update`. If the tool suggests `mintlify install`, run that.
+- **Docs tooling reference:** https://mintlify.com/docs
