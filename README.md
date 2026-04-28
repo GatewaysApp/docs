@@ -2,6 +2,8 @@
 
 This directory is the **Gateways** product documentation (guides, console help, and API reference). Site settings and navigation live in **`docs.json`** at the root of this folder.
 
+**Live site:** [https://docs.gateways.app](https://docs.gateways.app)
+
 ## Prerequisites
 
 - Node.js 18+
@@ -31,7 +33,7 @@ If pages 404, confirm you started the dev server from the folder that contains `
 
 ## Deploy
 
-If the hosted docs are wired to this repository, pushes to the default branch usually deploy automatically. GitHub integration and the public docs URL are configured in your team’s docs hosting dashboard.
+Production documentation is hosted at **[https://docs.gateways.app](https://docs.gateways.app)**. If the hosted site is wired to this repository, pushes to the default branch usually deploy automatically. GitHub integration and domain settings are configured in your team’s docs hosting dashboard.
 
 ## Troubleshooting
 
