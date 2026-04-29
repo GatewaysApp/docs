@@ -703,7 +703,7 @@ Invoices are numbered with the format `INV-YYYYMMDD-XXXX` (e.g., `INV-20240115-0
 
 ### Download Invoice (PDF)
 
-Generate an invoice as a PDF, store it in S3, and return a presigned URL for download.
+Returns the invoice PDF as the response body (binary). The client should save it using `Content-Disposition` or a default filename — do not expect a presigned S3 URL.
 
 **Endpoint:** `GET /api/payments/:workspaceSlug/invoices/:invoiceId/download`
 
@@ -711,29 +711,17 @@ Generate an invoice as a PDF, store it in S3, and return a presigned URL for dow
 - `workspaceSlug` (path) - The slug of the workspace
 - `invoiceId` (path) - The ID of the invoice
 
-**Response:**
-```json
-{
-  "message": "Invoice download ready",
-  "data": {
-    "downloadUrl": "https://...",
-    "expiresIn": 3600,
-    "fileName": "INV-20240115-0001.pdf"
-  }
-}
-```
+**Response (success): HTTP 200**
 
-- `downloadUrl`: Presigned S3 URL to download the PDF (valid for 1 hour).
-- `expiresIn`: URL validity in seconds.
-- `fileName`: Suggested filename for the invoice PDF.
+- `Content-Type`: `application/pdf`
+- `Content-Disposition`: `attachment; filename="<invoiceNumber>.pdf"`
+- Body: raw PDF bytes
 
 **Notes:**
-- The PDF is generated on each request and uploaded to the app's S3 bucket under `invoices/{workspaceId}/{invoiceNumber}.pdf`.
+- If a PDF is already stored in the app’s S3 bucket at `invoices/{workspaceId}/{invoiceNumber}.pdf`, it is streamed from S3. Otherwise the server generates the PDF on the fly and best-effort uploads it to S3 when `INVOICE_STORAGE_BUCKET`/`PROFILE_STORAGE_BUCKET` and AWS credentials are set (caching only; download still goes through this endpoint).
+- If S3 is not configured, the PDF is generated in memory and returned; no direct link to S3 is exposed to the client.
 - The PDF includes refund data when applicable: status (e.g. "Refunded" or "Paid (Refunded $X.XX)"), a "Refunded" row in invoice details, and in the amount section the original amount, refunded amount, and amount due.
 - The "Bill to" section shows the workspace name and, when set, the workspace billing address (line1, line2, city, state, postal code, country). Configure billing address in account settings → Workspace.
-- Requires `INVOICE_STORAGE_BUCKET` or `PROFILE_STORAGE_BUCKET` and AWS credentials to be configured.
-- Optional: set `INVOICE_STORAGE_PUBLIC_URL` (e.g. `https://gateways-invoices.s3.us-east-1.amazonaws.com`) when the bucket allows public GetObject. The app will then return direct public URLs instead of presigned URLs and will not require IAM GetObject/HeadObject for reads (403 on HeadObject is treated as “use public URL”).
-- Returns `503` if invoice storage is not configured.
 
 ---
 
@@ -747,7 +735,7 @@ Generate an invoice as a PDF, store it in S3, and return a presigned URL for dow
 | 403 | Forbidden (insufficient permissions) |
 | 404 | Not Found (workspace or plan not found) |
 | 500 | Internal Server Error (Stripe error, configuration error, or processing error) |
-| 503 | Service Unavailable (invoice download storage not configured) |
+| 503 | Service Unavailable (e.g. maintenance mode) |
 
 ---
 

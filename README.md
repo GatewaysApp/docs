@@ -33,9 +33,14 @@ If pages 404, confirm you started the dev server from the folder that contains `
 
 ## Deploy
 
-Production documentation is hosted at **[https://docs.gateways.app](https://docs.gateways.app)**. If the hosted site is wired to this repository, pushes to the default branch usually deploy automatically. GitHub integration and domain settings are configured in your team’s docs hosting dashboard.
+Production documentation is hosted at **[https://docs.gateways.app](https://docs.gateways.app)**.
+
+This repository is a **monorepo**: the Mintlify project must use the **`docs` subdirectory** as the documentation root (dashboard **Git settings** → enable monorepo / set documentation path to `docs` with no trailing slash, per [Mintlify monorepo setup](https://mintlify.com/docs/deploy/monorepo)). If that path is wrong or missing, deploys can ship an almost empty site: only the homepage and a couple of routes work while `/gateways/*`, `/platform/*`, and most API guides return **404** (you can confirm by checking [https://docs.gateways.app/sitemap.xml](https://docs.gateways.app/sitemap.xml)—it should list all published pages).
+
+After fixing the path, save settings and trigger a new deploy.
 
 ## Troubleshooting
 
+- **Many live URLs 404 but `mint dev` works:** fix the hosted **documentation path** to `docs` as above, then redeploy.
 - **CLI / preview issues:** run `mint update`. If the tool suggests `mintlify install`, run that.
 - **Docs tooling reference:** https://mintlify.com/docs
