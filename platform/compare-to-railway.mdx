@@ -5,16 +5,35 @@ description: Enterprise multi-cloud canvas vs Railway’s developer PaaS workflo
 
 # Gateways vs Railway
 
-**Railway** focuses on **fast project deploys**, **templates**, and **developer-friendly** service composition on Railway’s platform.
+**Railway** is built for fast developer workflows: create a project, deploy services, attach managed resources, and move quickly on Railway’s platform. It is a strong option when speed from idea to running service is the main requirement.
 
-**Gateways** is built for **workspaces, projects, and environments** over **customer-owned** AWS, Azure, and GCP—**diagram-first**, with **resource connections**, **activity**, and **HTTP APIs** for automation.
+**Gateways** is built for teams whose infrastructure belongs in their own AWS, Azure, or GCP accounts. It gives those teams a diagram-first console for projects, environments, resources, connections, activity, and APIs.
 
-| Topic | Gateways | Railway |
+## At A Glance
+
+| Decision area | Gateways | Railway |
 | --- | --- | --- |
-| **Billing & boundary** | Your cloud accounts | Railway platform |
-| **Team model** | Workspaces, roles, plan gates | Railway projects & teams |
-| **Strength** | Honest infra map + multi-cloud ops | Speed from repo to running service |
+| **Infrastructure boundary** | Your cloud accounts | Railway platform |
+| **Primary workflow** | Operate cloud resources and environments | Deploy services quickly |
+| **Best fit** | Platform teams, cloud governance, multi-cloud ownership | Developers optimizing for fast app deployment |
+| **System model** | Resources, relationships, environments, activity | Services, templates, project-level deploys |
 
-Pick **Railway** when **time-to-first-deploy** on a **single PaaS** matters most. Pick **Gateways** when **architecture in real clouds** and **cross-team alignment** drive delivery.
+## Choose Railway When
+
+- Your goal is the fastest path from code to a running service.
+- A hosted developer platform is enough for your operational needs.
+- You want to avoid direct management of AWS, Azure, or GCP resources.
+
+## Choose Gateways When
+
+- Your workloads must run in cloud accounts your organization owns.
+- You need a shared view of infrastructure across projects and environments.
+- You want developers, operators, and stakeholders aligned around the same resource graph.
+- You want the speed of a product UI without losing direct access to the underlying cloud resources, SSH, billing, and provider controls.
+- You need APIs and activity history for the same infrastructure visible in the console.
+
+## Bottom Line
+
+Railway is optimized for developer deployment speed. Gateways is optimized for teams that need speed **and** ownership: real cloud resources, visible architecture, provider access, and operational control in one place.
 
 [Compare hub](/platform) · [Workspaces API](/api/24-workspaces)

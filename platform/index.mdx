@@ -6,20 +6,194 @@ description: How Gateways compares to popular deployment and PaaS platforms.
 
 # Compare Gateways
 
-Gateways is a **multi-cloud architecture console**: a visual canvas for real AWS, Azure, and GCP resources, workspaces, and APIs. These pages contrast that model with **hosted PaaS and edge platforms** that optimize for app deploys on their own infrastructure.
+Gateways is not another hosted runtime. It is a **cloud operations console for infrastructure you own**: AWS, Azure, GCP, resources, environments, connections, activity, and APIs in one visual workspace.
 
-| | Gateways | Typical PaaS / edge |
+Many PaaS and edge platforms are excellent when you want to deploy into **their** managed infrastructure. Gateways is built for teams that need the speed of a modern product UI while keeping workloads, networking, data, and billing inside **their own cloud accounts**.
+
+| Decision area | Gateways | Hosted PaaS / edge platforms |
 | --- | --- | --- |
-| **Primary job** | Design, connect, and operate cloud infra you own | Ship apps to vendor-managed runtime |
-| **Cloud** | Your accounts (AWS, Azure, GCP) | Provider’s stack |
-| **Model** | Resources, connections, environments | Services, regions, build pipelines |
+| **Infrastructure boundary** | Your AWS, Azure, or GCP accounts | Vendor-managed runtime |
+| **Operating model** | Visual architecture, resource graph, environments, APIs | App/service deploy workflow |
+| **Control surface** | Native cloud resources, connections, DNS, databases, servers, functions | Platform abstractions and add-ons |
+| **Best fit** | Teams with compliance, existing cloud spend, multi-cloud, or platform ownership needs | Teams optimizing for fastest app deploy on one managed platform |
 
-## Platform guides
+## Feature Comparison
 
-- [vs Vercel](/platform/compare-to-vercel)
-- [vs Render](/platform/compare-to-render)
-- [vs Fly.io](/platform/compare-to-fly-io)
-- [vs Heroku](/platform/compare-to-heroku)
-- [vs Railway](/platform/compare-to-railway)
+Use this matrix to understand the practical difference: hosted PaaS tools optimize the application deployment path, while Gateways focuses on operating the cloud estate behind and around those applications.
 
-[← Back to Platform overview](/gateways/overview)
+<div style={{ width: 'calc(100% + 260px)', maxWidth: '980px' }}>
+  <table style={{ width: '100%', tableLayout: 'fixed' }}>
+    <colgroup>
+      <col style={{ width: '22%' }} />
+      <col style={{ width: '13%' }} />
+      <col style={{ width: '13%' }} />
+      <col style={{ width: '13%' }} />
+      <col style={{ width: '13%' }} />
+      <col style={{ width: '13%' }} />
+      <col style={{ width: '13%' }} />
+    </colgroup>
+    <thead>
+      <tr>
+        <th style={{ textAlign: 'left' }}>Capability</th>
+        <th style={{ textAlign: 'center' }}>Gateways</th>
+        <th style={{ textAlign: 'center' }}>Vercel</th>
+        <th style={{ textAlign: 'center' }}>Render</th>
+        <th style={{ textAlign: 'center' }}>Fly.io</th>
+        <th style={{ textAlign: 'center' }}>Heroku</th>
+        <th style={{ textAlign: 'center' }}>Railway</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Own cloud</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+      </tr>
+      <tr>
+        <td>Cloud control</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+      </tr>
+      <tr>
+        <td>Provider access</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+      </tr>
+      <tr>
+        <td>SSH access</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+      </tr>
+      <tr>
+        <td>Works if platform down</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+      </tr>
+      <tr>
+        <td>Infra canvas</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+      </tr>
+      <tr>
+        <td>Multi-cloud</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+      </tr>
+      <tr>
+        <td>Projects/envs</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+      </tr>
+      <tr>
+        <td>Resource types</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+      </tr>
+      <tr>
+        <td>Cloud billing</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+      </tr>
+      <tr>
+        <td>Git deploys</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+      </tr>
+      <tr>
+        <td>Managed runtime</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+      </tr>
+      <tr>
+        <td>Activity log</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+      </tr>
+      <tr>
+        <td>Infra API</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+**Legend**
+
+- ✅ Core capability
+- ⚠️ Available in a narrower or platform-specific form
+- ❌ Not the product’s main model
+
+## When Gateways Is The Better Fit
+
+- **Your cloud accounts are the source of truth.** Gateways keeps compute, data, networking, DNS, and billing inside the AWS, Azure, or GCP accounts your organization already governs.
+- **You keep an escape hatch.** If Gateways is unavailable, your resources still live in your cloud account, so your team can inspect, SSH into, or operate them directly through the cloud provider.
+- **You need clarity before the next deployment.** Teams can see projects, environments, resources, and connections on one canvas instead of piecing together architecture from tickets, Terraform, spreadsheets, and provider consoles.
+- **You want platform speed without platform lock-in.** Developers get a guided console and CLI workflow, while operators keep control of real cloud resources and provider-level policies.
+- **You care about more than “did it deploy?”** Gateways connects resource state, activity, access, workspace membership, and APIs so delivery and operations share the same system of record.
+
+## Compare By Platform
+
+- **[Gateways vs Vercel](/platform/compare-to-vercel)** — frontend cloud and edge workflows vs owned cloud infrastructure.
+- **[Gateways vs Render](/platform/compare-to-render)** — managed PaaS services vs multi-cloud resource operations.
+- **[Gateways vs Fly.io](/platform/compare-to-fly-io)** — global app runtime vs hyperscaler resource control.
+- **[Gateways vs Heroku](/platform/compare-to-heroku)** — classic dyno PaaS vs modern cloud architecture console.
+- **[Gateways vs Railway](/platform/compare-to-railway)** — fast developer deploys vs team-owned cloud environments.
+
+[← Console overview](/gateways/overview)

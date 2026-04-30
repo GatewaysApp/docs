@@ -5,16 +5,35 @@ description: Multi-cloud architecture canvas vs Vercel’s frontend cloud and ed
 
 # Gateways vs Vercel
 
-**Vercel** excels at **frontend and full-stack deploys** tied to Git, with a global edge, serverless functions, and deep Next.js integration on Vercel’s platform.
+**Vercel** is excellent when your main goal is to ship frontend and full-stack web apps quickly on Vercel’s infrastructure, especially when your workflow is Git-driven and your stack is close to the modern JavaScript ecosystem.
 
-**Gateways** targets teams that **run workloads in their own AWS, Azure, or GCP accounts**: VMs, databases, DNS, serverless, and more—**composed on a canvas** with workspaces, environments, and a unified API.
+**Gateways** is for teams whose infrastructure must live in their own AWS, Azure, or GCP accounts. Instead of abstracting cloud ownership away, Gateways gives you a product-grade console for the resources you operate: servers, scalable servers, databases, DNS, functions, storage, connections, environments, activity, and APIs.
 
-| Topic | Gateways | Vercel |
+## At A Glance
+
+| Decision area | Gateways | Vercel |
 | --- | --- | --- |
-| **Where compute runs** | Your cloud accounts | Vercel-managed infrastructure |
-| **Best fit** | Multi-service architecture, compliance, existing cloud spend | Fast web app deploys, edge, framework-native DX |
-| **Networking & data** | Full VPC-style resources per provider | Platform abstractions (routes, env, KV, etc.) |
+| **Infrastructure boundary** | Your cloud accounts | Vercel-managed platform |
+| **Primary workflow** | Design, connect, and operate cloud resources | Build and deploy web apps from Git |
+| **Best fit** | Multi-service systems, compliance, existing cloud spend, platform teams | Frontend apps, edge delivery, framework-native deployment |
+| **Control model** | Native cloud resources and connections | Vercel abstractions and integrations |
 
-Use **Vercel** when your product is a web app and you want zero server ops on a single platform. Use **Gateways** when you need **direct control** over cloud resources across providers and a **shared diagram** of how they connect.
+## Choose Vercel When
+
+- Your product is primarily a web application and Vercel’s runtime is the right deployment target.
+- You want the fastest path from repository to globally served frontend.
+- You prefer platform-managed infrastructure over direct ownership of cloud primitives.
+
+## Choose Gateways When
+
+- Your company needs workloads, data, networking, and billing inside its own AWS, Azure, or GCP accounts.
+- Your system includes more than web deployments: databases, servers, DNS, storage, functions, and cross-resource relationships.
+- Your team needs a shared architecture map that reflects what exists in the cloud, not just what was deployed from Git.
+- You need direct provider access and an operational fallback: the resources remain in your cloud account even if the Gateways console is unavailable.
+- Governance, environments, access, and operational visibility matter as much as deploy speed.
+
+## Bottom Line
+
+Vercel is a strong choice when the application belongs on Vercel’s platform. Gateways is the stronger fit when the web app is only one part of a broader cloud architecture that your team must own, inspect, SSH into, and operate directly when needed.
 
 [Compare hub](/platform) · [API reference](/api/index)

@@ -20,22 +20,30 @@
         "groups": [
           {
             "group": "Platform",
+            "expanded": true,
             "root": "index",
             "pages": ["gateways/overview", "gateways/create-account"]
           },
           {
             "group": "CLI",
+            "expanded": true,
             "root": "gateways/cli/index",
             "pages": [
               {
                 "group": "Get started",
-                "pages": ["gateways/cli/install", "gateways/cli/project-file"]
+                "expanded": true,
+                "pages": [
+                  "gateways/cli/install",
+                  "gateways/cli/initialize-project",
+                  "gateways/cli/project-file"
+                ]
               },
               "gateways/cli/commands"
             ]
           },
           {
             "group": "Compare",
+            "expanded": true,
             "root": "platform/index",
             "pages": [
               "platform/compare-to-vercel",
@@ -47,6 +55,7 @@
           },
           {
             "group": "Console",
+            "expanded": true,
             "root": "gateways/navigation",
             "pages": [
               "gateways/canvas",
@@ -57,12 +66,14 @@
           },
           {
             "group": "Resource types",
+            "expanded": true,
             "root": "gateways/resources/index",
             "pages": [
               "gateways/resources/server",
               "gateways/resources/scalable-server",
               {
                 "group": "Runtime",
+                "expanded": true,
                 "root": "gateways/resources/runtime/index",
                 "pages": [
                   "gateways/resources/runtime/families-and-versions",
@@ -72,6 +83,7 @@
               },
               {
                 "group": "Application",
+                "expanded": true,
                 "root": "gateways/resources/application/index",
                 "pages": [
                   "gateways/resources/application/sources",
@@ -99,21 +111,25 @@
         "groups": [
           {
             "group": "Overview",
+            "expanded": true,
             "root": "api-reference/introduction",
             "pages": ["api/index"]
           },
           {
             "group": "Authentication & access",
+            "expanded": true,
             "root": "api/00-authentication-access",
             "pages": ["api/01-authentication"]
           },
           {
             "group": "Projects & cloud",
+            "expanded": true,
             "root": "api/02-projects-environments",
             "pages": ["api/03-cloud-connections"]
           },
           {
             "group": "Resources & applications",
+            "expanded": true,
             "root": "api/04-servers-instances",
             "pages": [
               "api/05-resources",
@@ -130,21 +146,25 @@
           },
           {
             "group": "Infrastructure & catalog",
+            "expanded": true,
             "root": "api/12-cloud-infrastructure",
             "pages": ["api/13-legacy"]
           },
           {
             "group": "Data & compute",
+            "expanded": true,
             "root": "api/18-databases",
             "pages": ["api/19-cache-servers", "api/21-functions"]
           },
           {
             "group": "Activity, plans & workspaces",
+            "expanded": true,
             "root": "api/22-activities",
             "pages": ["api/23-pricing-plans", "api/24-workspaces", "api/25-payments"]
           },
           {
             "group": "DNS & scaling",
+            "expanded": true,
             "root": "api/25-dns",
             "pages": ["api/26-subdomains", "api/27-scalable-servers", "api/28-runtimes"]
           }

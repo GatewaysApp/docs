@@ -5,16 +5,35 @@ description: Multi-cloud resource design vs Fly.io’s global app platform.
 
 # Gateways vs Fly.io
 
-**Fly.io** runs **your containers and machines** close to users on Fly’s network, with a strong story for **global apps** and low-latency placement.
+**Fly.io** is designed for running applications close to users on Fly’s global platform. It is compelling when your main concern is low-latency placement of app processes, machines, and volumes on Fly’s network.
 
-**Gateways** does not replace a container scheduler; it **orchestrates the cloud primitives you already use** (instances, scaling groups, databases, DNS, functions) across **AWS, Azure, and GCP** with a **canvas and API**.
+**Gateways** is not a replacement for a global app runtime. It is the operating layer for infrastructure in your own AWS, Azure, and GCP accounts: servers, scalable servers, databases, DNS, functions, storage, and the connections between them.
 
-| Topic | Gateways | Fly.io |
+## At A Glance
+
+| Decision area | Gateways | Fly.io |
 | --- | --- | --- |
-| **Unit of work** | Cloud resources & connections in *your* accounts | Fly Machines, volumes, regions on Fly |
-| **Cloud breadth** | AWS + Azure + GCP in one product map | Fly platform + optional integrations |
-| **Ideal user** | Platform teams standardizing on hyperscalers | Teams optimizing global process/container placement |
+| **Infrastructure boundary** | Your hyperscaler accounts | Fly platform |
+| **Primary workflow** | Design and operate cloud resources | Run apps globally on Fly |
+| **Best fit** | Multi-cloud operations, resource governance, architecture visibility | Global application runtime and regional placement |
+| **Source of truth** | Cloud resources and connections | Fly apps, machines, regions, and volumes |
 
-Use **Fly.io** when Fly’s **runtime and network** match your app model. Use **Gateways** when the **source of truth** is your **enterprise cloud footprint** and you need **one map** for people and automation.
+## Choose Fly.io When
+
+- Your application benefits from Fly’s global runtime and network model.
+- You want app placement near users more than broad cloud resource management.
+- Your infrastructure can be represented mostly as Fly apps, machines, and attached services.
+
+## Choose Gateways When
+
+- Your infrastructure spans AWS, Azure, or GCP and must stay in those accounts.
+- You need to operate more than containers: databases, DNS, firewalls, storage, functions, and scalable servers.
+- You want teams to see the architecture as a connected map, not scattered provider consoles and scripts.
+- You need direct cloud-provider control, including the ability to inspect instances, networking, billing, and SSH access outside the Gateways UI.
+- You need workspace, project, environment, and API structure around cloud operations.
+
+## Bottom Line
+
+Fly.io is strong when global app runtime is the product need. Gateways is the better fit when your organization’s cloud footprint is the source of truth and your team needs a clear, governable way to operate it without losing direct provider access.
 
 [Compare hub](/platform) · [Resource types](/gateways/resources)

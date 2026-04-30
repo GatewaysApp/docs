@@ -5,6 +5,32 @@ description: Fields in .gateways.yaml for project, environment, uploads, and dep
 
 The CLI reads **`./.gateways.yaml`** in your working directory. Create or update it with `gateways init`.
 
+## Sample `.gateways.yaml`
+
+This example is for an upload-type application whose build output is uploaded from `dist/`, then installed and started on the server after deploy.
+
+```yaml
+project: my-app
+environment: production
+email: you@company.com
+path: dist
+push_resource: resource-1wbmwnxvok
+
+start_commands:
+  - npm ci
+  - npm run build
+  - npm start
+
+ignore:
+  - node_modules
+  - ".env"
+  - "*.map"
+  - "**/*.log"
+  - "**/coverage"
+```
+
+For a static website, the target may be saved as `bucket_explorer_id`, `static_website_id`, or `push_resource` depending on the command flow you use. You can also omit target fields and let `gateways push` open the picker the first time.
+
 ## Common fields
 
 | Field | Purpose |

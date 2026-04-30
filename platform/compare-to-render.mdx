@@ -5,16 +5,35 @@ description: Multi-cloud canvas in your accounts vs Render’s unified PaaS.
 
 # Gateways vs Render
 
-**Render** offers **managed services** (web services, databases, cron, static sites) on Render’s infrastructure with simple YAML or dashboard workflows.
+**Render** is a clean PaaS for deploying web services, workers, cron jobs, databases, and static sites on Render’s managed infrastructure. It is a good fit when you want a straightforward hosting platform with fewer cloud decisions.
 
-**Gateways** connects to **your** AWS, Azure, or GCP and lets you **place, connect, and sync** resources (compute, data, DNS, functions) on a **visual architecture map**, with team workspaces and APIs.
+**Gateways** is built for teams that have chosen, or are required to use, their own AWS, Azure, or GCP accounts. It gives those teams a visual operations layer for real cloud resources: compute, data, DNS, functions, storage, connections, environments, activity, and APIs.
 
-| Topic | Gateways | Render |
+## At A Glance
+
+| Decision area | Gateways | Render |
 | --- | --- | --- |
-| **Ownership** | Resources live in your cloud billing | Render-hosted stacks |
-| **Scope** | Multi-cloud, VPC-level patterns | Single PaaS surface |
-| **Operations** | Sync, delete, and automate via unified resources API | Render APIs and dashboards |
+| **Infrastructure boundary** | Your cloud accounts | Render-managed platform |
+| **Primary workflow** | Model and operate cloud resources | Deploy services on a PaaS |
+| **Best fit** | Existing cloud estates, platform teams, compliance, multi-cloud | Simple app hosting with managed services |
+| **Operational view** | Architecture canvas plus API-backed resources | Render dashboard and service model |
 
-Choose **Render** for straightforward **PaaS hosting** with less cloud sprawl. Choose **Gateways** when you **standardize on major clouds** and want one console for **architecture and governance**.
+## Choose Render When
+
+- You want a hosted PaaS and do not need to manage cloud accounts directly.
+- Your services fit Render’s platform model cleanly.
+- You value a simple deployment experience over direct control of cloud primitives.
+
+## Choose Gateways When
+
+- Your workloads must run in AWS, Azure, or GCP under your organization’s accounts and policies.
+- You need to visualize how servers, databases, DNS, storage, and functions relate across environments.
+- You want a developer-friendly console without losing cloud-level ownership.
+- You want the option to inspect and recover resources directly in the cloud provider instead of depending entirely on a hosting control plane.
+- You need API automation around the same resources shown on the architecture canvas.
+
+## Bottom Line
+
+Render reduces infrastructure decisions by giving you a managed hosting surface. Gateways keeps infrastructure in the clouds you already govern, while still giving your team one place to design, operate, SSH, audit, and automate it.
 
 [Compare hub](/platform) · [Console canvas](/gateways/canvas)

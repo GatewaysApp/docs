@@ -896,17 +896,22 @@ If you can't scan the QR code, you can manually enter the secret key (`manualEnt
 
 ---
 
-## Plan Restrictions
+## Workspace Plan Restrictions
 
-All users are assigned a pricing plan that determines their resource limits. Plan restrictions are automatically enforced when creating resources. See the [Pricing Plans API](/api/23-pricing-plans) documentation for details.
+Pricing plans are assigned to **workspaces**, not individual users. A user can belong to multiple workspaces, and each workspace can have its own plan, members, projects, environments, resources, and cloud-connection limits.
 
-**Default Plan:** All new users are automatically assigned the Free plan, which includes:
-- 1 project
-- 1 environment per project
-- 3 total resources
-- 1 cloud connection
+Plan restrictions are enforced when authenticated users create or update workspace-scoped resources. For example, creating a project, environment, cloud connection, or resource checks the active workspace plan before the operation succeeds.
 
-If you exceed your plan limits, you'll receive a `403 Forbidden` error with details about the limit and upgrade options.
+The default workspace plan is typically **Free**. Its limits are defined by the active pricing-plan configuration returned by the [Pricing Plans API](/api/23-pricing-plans), and may include limits such as:
+
+- Maximum projects per workspace
+- Maximum environments per project
+- Maximum total resources and resources per project
+- Maximum cloud connections
+- Maximum workspace members
+- Disabled features such as advanced monitoring or priority support
+
+If a request exceeds the workspace plan, the API returns a `403 Forbidden` response with details about the limit. Use the [Workspaces API](/api/24-workspaces) to view a workspace's current plan and the [Payments API](/api/25-payments) to manage upgrades or downgrades.
 
 ---
 

@@ -1,0 +1,68 @@
+---
+title: Initialize project
+description: Create .gateways.yaml from a working project directory with gateways init.
+---
+
+Initialize a local app or static site directory before you push it with the Gateways CLI. The `init` command writes **`.gateways.yaml`** in the current directory.
+
+## Steps
+
+Run these commands from the app or site folder you want to deploy.
+
+<Steps>
+  <Step title="Open your working project directory">
+    ```bash
+    cd my-repo
+    ```
+  </Step>
+
+  <Step title="Initialize the Gateways project file">
+    Pass the Gateways **project slug** and **environment slug** as `project/environment`.
+
+    ```bash
+    gateways init my-app/production
+    ```
+
+    To upload from a subdirectory by default, pass it as the optional second argument:
+
+    ```bash
+    gateways init my-app/production dist
+    ```
+  </Step>
+
+  <Step title="Sign in if needed">
+    `init` checks that the project and environment exist and that your account has access.
+
+    ```bash
+    gateways login
+    ```
+  </Step>
+
+  <Step title="Check the generated file">
+    ```bash
+    gateways status
+    ```
+
+    If `.gateways.yaml` already exists, `init` updates `project`, `environment`, and optional `path` while preserving fields like `email`, `push_resource`, `start_commands`, and `ignore`.
+  </Step>
+
+  <Step title="Push or pick a target">
+    The first `push` can open a picker for upload apps or static sites. The chosen target is saved so future pushes can reuse it.
+
+    ```bash
+    gateways push
+    ```
+  </Step>
+</Steps>
+
+## What gets written
+
+A minimal project file looks like this:
+
+```yaml
+project: my-app
+environment: production
+path: dist
+```
+
+See **[Project file](/gateways/cli/project-file)** for all supported `.gateways.yaml` fields and a fuller example.

@@ -5,16 +5,35 @@ description: Your-cloud architecture console vs Heroku’s classic PaaS dynos an
 
 # Gateways vs Heroku
 
-**Heroku** popularized **git-push deploys**, **dynos**, and **add-ons** on Salesforce infrastructure—great for teams that want **opinionated PaaS** with minimal raw cloud exposure.
+**Heroku** is the classic developer PaaS: push code, run dynos, attach add-ons, and avoid most raw infrastructure decisions. It remains useful when an opinionated application platform is exactly what the team wants.
 
-**Gateways** assumes you (or your org) **operate AWS, Azure, or GCP directly** and need **visibility and control**: environments, connections between services, and APIs—not a single shared PaaS layer.
+**Gateways** is for organizations that operate directly in AWS, Azure, or GCP and still want a clean product experience. It provides a visual architecture canvas, workspace and environment model, resource connections, activity, and APIs over infrastructure your team owns.
 
-| Topic | Gateways | Heroku |
+## At A Glance
+
+| Decision area | Gateways | Heroku |
 | --- | --- | --- |
-| **Abstraction** | Real cloud services you configure | Dynos, buildpacks, add-on marketplace |
-| **Portability** | Native to each cloud’s APIs | Heroku platform |
-| **Fit** | Regulated or multi-cloud shops, existing landing zones | Rapid app iteration on PaaS |
+| **Infrastructure boundary** | Your cloud accounts | Heroku platform |
+| **Primary workflow** | Manage cloud resources and relationships | Deploy apps to dynos and add-ons |
+| **Best fit** | Teams with cloud ownership, compliance, multi-cloud, or landing zones | Teams that want simple app hosting without cloud exposure |
+| **Operational model** | Architecture canvas, resources, environments, APIs | PaaS abstractions and add-on ecosystem |
 
-If **Heroku’s model** still fits, it remains a strong **developer PaaS**. If you have **moved (or must use) hyperscaler accounts**, **Gateways** helps teams **see and run** that estate **without losing** a product-grade UX.
+## Choose Heroku When
+
+- You want an opinionated PaaS and do not need direct cloud resource ownership.
+- Your application fits a dyno and add-on model.
+- Your priority is developer simplicity over infrastructure control.
+
+## Choose Gateways When
+
+- Your organization requires infrastructure to run in its own AWS, Azure, or GCP accounts.
+- You need visibility into real resources: servers, databases, DNS, storage, functions, and connections.
+- Your team wants a Heroku-like level of usability while preserving cloud governance.
+- You want operators to keep direct cloud and SSH access instead of relying only on a PaaS abstraction.
+- Projects, environments, roles, activity, and APIs need to reflect your actual cloud estate.
+
+## Bottom Line
+
+Heroku is ideal when you want the platform to hide infrastructure. Gateways is ideal when infrastructure ownership is non-negotiable and the team still needs a fast, understandable way to operate it with provider-level control intact.
 
 [Compare hub](/platform) · [Cloud connections](/api/03-cloud-connections)
