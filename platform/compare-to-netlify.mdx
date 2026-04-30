@@ -1,0 +1,38 @@
+---
+title: Gateways vs Netlify
+description: Owned cloud operations vs Netlify's composable web platform.
+---
+
+# Gateways vs Netlify
+
+**Netlify** is strong for deploying modern web experiences: static sites, frontend frameworks, serverless functions, forms, edge features, and Git-based workflows on Netlify's platform.
+
+**Gateways** is for teams whose infrastructure must live in their own AWS, Azure, or GCP accounts. It gives those teams a visual operations layer for servers, scalable servers, databases, DNS, storage, functions, connections, environments, activity, SSH access, and APIs.
+
+## At A Glance
+
+| Decision area | Gateways | Netlify |
+| --- | --- | --- |
+| **Infrastructure boundary** | Your cloud accounts | Netlify-managed platform |
+| **Primary workflow** | Operate cloud resources and environments | Build and deploy web projects from Git |
+| **Best fit** | Platform teams, owned cloud estates, compliance, multi-cloud operations | Frontend teams shipping web apps and sites quickly |
+| **Control model** | Native cloud resources, provider access, SSH, and APIs | Netlify abstractions, integrations, and edge platform |
+
+## Choose Netlify When
+
+- Your product is primarily a web app, marketing site, docs site, or composable frontend.
+- You want fast Git-to-deploy workflows with Netlify-managed build, hosting, edge, and functions.
+- You prefer platform-managed infrastructure over direct ownership of cloud resources.
+
+## Choose Gateways When
+
+- Your workloads, data, networking, and billing must remain in AWS, Azure, or GCP accounts your organization owns.
+- Your system includes more than frontend delivery: servers, databases, DNS, storage, functions, runtime configuration, and cross-resource connections.
+- You want the speed of a product UI without losing direct access to the underlying cloud resources, SSH, provider consoles, and billing.
+- You need an operational fallback: if Gateways is unavailable, the resources still exist in your cloud account and can be inspected or operated directly.
+
+## Bottom Line
+
+Netlify is a strong fit when the web delivery platform is the center of the architecture. Gateways is the better fit when the website or app is one part of a broader cloud estate that your team needs to own, see, automate, SSH into, and operate directly.
+
+[Compare hub](/platform) · [Resource types](/gateways/resources)

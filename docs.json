@@ -47,6 +47,7 @@
             "root": "platform/index",
             "pages": [
               "platform/compare-to-vercel",
+              "platform/compare-to-netlify",
               "platform/compare-to-render",
               "platform/compare-to-fly-io",
               "platform/compare-to-heroku",

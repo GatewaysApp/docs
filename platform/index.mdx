@@ -1,10 +1,8 @@
 ---
-title: Compare
-sidebarTitle: Compare
+title: "Compare Gateways"
+sidebarTitle: "Compare"
 description: How Gateways compares to popular deployment and PaaS platforms.
 ---
-
-# Compare Gateways
 
 Gateways is not another hosted runtime. It is a **cloud operations console for infrastructure you own**: AWS, Azure, GCP, resources, environments, connections, activity, and APIs in one visual workspace.
 
@@ -24,19 +22,21 @@ Use this matrix to understand the practical difference: hosted PaaS tools optimi
 <div style={{ width: 'calc(100% + 260px)', maxWidth: '980px' }}>
   <table style={{ width: '100%', tableLayout: 'fixed' }}>
     <colgroup>
-      <col style={{ width: '22%' }} />
-      <col style={{ width: '13%' }} />
-      <col style={{ width: '13%' }} />
-      <col style={{ width: '13%' }} />
-      <col style={{ width: '13%' }} />
-      <col style={{ width: '13%' }} />
-      <col style={{ width: '13%' }} />
+      <col style={{ width: '18%' }} />
+      <col style={{ width: '11.7%' }} />
+      <col style={{ width: '11.7%' }} />
+      <col style={{ width: '11.7%' }} />
+      <col style={{ width: '11.7%' }} />
+      <col style={{ width: '11.7%' }} />
+      <col style={{ width: '11.7%' }} />
+      <col style={{ width: '11.7%' }} />
     </colgroup>
     <thead>
       <tr>
         <th style={{ textAlign: 'left' }}>Capability</th>
         <th style={{ textAlign: 'center' }}>Gateways</th>
         <th style={{ textAlign: 'center' }}>Vercel</th>
+        <th style={{ textAlign: 'center' }}>Netlify</th>
         <th style={{ textAlign: 'center' }}>Render</th>
         <th style={{ textAlign: 'center' }}>Fly.io</th>
         <th style={{ textAlign: 'center' }}>Heroku</th>
@@ -52,13 +52,15 @@ Use this matrix to understand the practical difference: hosted PaaS tools optimi
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
       </tr>
       <tr>
         <td>Cloud control</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
       </tr>
@@ -70,15 +72,27 @@ Use this matrix to understand the practical difference: hosted PaaS tools optimi
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
       </tr>
       <tr>
         <td>SSH access</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+      </tr>
+      <tr>
+        <td>Cloud IDE</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
       </tr>
       <tr>
         <td>Works if platform down</td>
@@ -88,19 +102,32 @@ Use this matrix to understand the practical difference: hosted PaaS tools optimi
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
       </tr>
       <tr>
-        <td>Infra canvas</td>
+        <td>Avoids vendor lock-in</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+      </tr>
+      <tr>
+        <td>Visual infra</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
       </tr>
       <tr>
         <td>Multi-cloud</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
@@ -110,20 +137,12 @@ Use this matrix to understand the practical difference: hosted PaaS tools optimi
       <tr>
         <td>Projects/envs</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
-      </tr>
-      <tr>
-        <td>Resource types</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
       </tr>
       <tr>
         <td>Cloud billing</td>
@@ -133,9 +152,21 @@ Use this matrix to understand the practical difference: hosted PaaS tools optimi
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+      </tr>
+      <tr>
+        <td>Manage DNS</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
       </tr>
       <tr>
         <td>Git deploys</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
@@ -151,23 +182,26 @@ Use this matrix to understand the practical difference: hosted PaaS tools optimi
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
       </tr>
       <tr>
         <td>Activity log</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
       </tr>
       <tr>
         <td>Infra API</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>✅</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
-        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
+        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>❌</td>
         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>⚠️</td>
       </tr>
     </tbody>
@@ -191,6 +225,7 @@ Use this matrix to understand the practical difference: hosted PaaS tools optimi
 ## Compare By Platform
 
 - **[Gateways vs Vercel](/platform/compare-to-vercel)** — frontend cloud and edge workflows vs owned cloud infrastructure.
+- **[Gateways vs Netlify](/platform/compare-to-netlify)** — composable web platform workflows vs owned cloud infrastructure.
 - **[Gateways vs Render](/platform/compare-to-render)** — managed PaaS services vs multi-cloud resource operations.
 - **[Gateways vs Fly.io](/platform/compare-to-fly-io)** — global app runtime vs hyperscaler resource control.
 - **[Gateways vs Heroku](/platform/compare-to-heroku)** — classic dyno PaaS vs modern cloud architecture console.
