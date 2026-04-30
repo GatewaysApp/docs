@@ -39,8 +39,10 @@ This repository is a **monorepo**: the Mintlify project must use the **`docs` su
 
 After fixing the path, save settings and trigger a new deploy.
 
+Navigation **groups** in `docs.json` use Mintlify’s optional [`root`](https://mintlify.com/docs/organize/navigation#root-page) field so each section has a clear landing page (for example **Compare** → `platform/index`) without duplicating that page in the `pages` list. That matches Mintlify’s documented structure and avoids odd deploy behavior. After changing `docs.json`, trigger a **full production deploy** and recheck the sitemap.
+
 ## Troubleshooting
 
-- **Many live URLs 404 but `mint dev` works:** fix the hosted **documentation path** to `docs` as above, then redeploy.
+- **Many live URLs 404 but `mint dev` works:** fix the hosted **documentation path** to `docs` as above, then redeploy. If the sitemap still lists only a handful of URLs while `mint validate` passes locally, use the Mintlify dashboard to **redeploy** or contact support with build logs.
 - **CLI / preview issues:** run `mint update`. If the tool suggests `mintlify install`, run that.
 - **Docs tooling reference:** https://mintlify.com/docs

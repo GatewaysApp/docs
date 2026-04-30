@@ -2,6 +2,8 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Gateways",
+  "public": true,
+  "description": "Gateways documentation: platform and console guides, product comparisons, and REST API reference.",
   "colors": {
     "primary": "#3b82f6",
     "light": "#60a5fa",
@@ -18,30 +20,24 @@
         "groups": [
           {
             "group": "Platform",
-            "pages": [
-              "index",
-              "gateways/overview",
-              "gateways/create-account"
-            ]
+            "root": "index",
+            "pages": ["gateways/overview", "gateways/create-account"]
           },
           {
             "group": "CLI",
+            "root": "gateways/cli/index",
             "pages": [
-              "gateways/cli/index",
               {
                 "group": "Get started",
-                "pages": [
-                  "gateways/cli/install",
-                  "gateways/cli/project-file"
-                ]
+                "pages": ["gateways/cli/install", "gateways/cli/project-file"]
               },
               "gateways/cli/commands"
             ]
           },
           {
             "group": "Compare",
+            "root": "platform/index",
             "pages": [
-              "platform/index",
               "platform/compare-to-vercel",
               "platform/compare-to-render",
               "platform/compare-to-fly-io",
@@ -51,8 +47,8 @@
           },
           {
             "group": "Console",
+            "root": "gateways/navigation",
             "pages": [
-              "gateways/navigation",
               "gateways/canvas",
               "gateways/activity-and-project-settings",
               "gateways/account",
@@ -61,14 +57,14 @@
           },
           {
             "group": "Resource types",
+            "root": "gateways/resources/index",
             "pages": [
-              "gateways/resources/index",
               "gateways/resources/server",
               "gateways/resources/scalable-server",
               {
                 "group": "Runtime",
+                "root": "gateways/resources/runtime/index",
                 "pages": [
-                  "gateways/resources/runtime/index",
                   "gateways/resources/runtime/families-and-versions",
                   "gateways/resources/runtime/application-servers",
                   "gateways/resources/runtime/canvas-and-connections"
@@ -76,8 +72,8 @@
               },
               {
                 "group": "Application",
+                "root": "gateways/resources/application/index",
                 "pages": [
-                  "gateways/resources/application/index",
                   "gateways/resources/application/sources",
                   "gateways/resources/application/upload-and-build",
                   "gateways/resources/application/git-repositories",
@@ -103,29 +99,23 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": [
-              "api-reference/introduction",
-              "api/index"
-            ]
+            "root": "api-reference/introduction",
+            "pages": ["api/index"]
           },
           {
             "group": "Authentication & access",
-            "pages": [
-              "api/00-authentication-access",
-              "api/01-authentication"
-            ]
+            "root": "api/00-authentication-access",
+            "pages": ["api/01-authentication"]
           },
           {
             "group": "Projects & cloud",
-            "pages": [
-              "api/02-projects-environments",
-              "api/03-cloud-connections"
-            ]
+            "root": "api/02-projects-environments",
+            "pages": ["api/03-cloud-connections"]
           },
           {
             "group": "Resources & applications",
+            "root": "api/04-servers-instances",
             "pages": [
-              "api/04-servers-instances",
               "api/05-resources",
               "api/06-applications",
               "api/07-resource-connections",
@@ -140,36 +130,23 @@
           },
           {
             "group": "Infrastructure & catalog",
-            "pages": [
-              "api/12-cloud-infrastructure",
-              "api/13-legacy"
-            ]
+            "root": "api/12-cloud-infrastructure",
+            "pages": ["api/13-legacy"]
           },
           {
             "group": "Data & compute",
-            "pages": [
-              "api/18-databases",
-              "api/19-cache-servers",
-              "api/21-functions"
-            ]
+            "root": "api/18-databases",
+            "pages": ["api/19-cache-servers", "api/21-functions"]
           },
           {
             "group": "Activity, plans & workspaces",
-            "pages": [
-              "api/22-activities",
-              "api/23-pricing-plans",
-              "api/24-workspaces",
-              "api/25-payments"
-            ]
+            "root": "api/22-activities",
+            "pages": ["api/23-pricing-plans", "api/24-workspaces", "api/25-payments"]
           },
           {
             "group": "DNS & scaling",
-            "pages": [
-              "api/25-dns",
-              "api/26-subdomains",
-              "api/27-scalable-servers",
-              "api/28-runtimes"
-            ]
+            "root": "api/25-dns",
+            "pages": ["api/26-subdomains", "api/27-scalable-servers", "api/28-runtimes"]
           }
         ]
       }
