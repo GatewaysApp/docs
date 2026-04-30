@@ -178,15 +178,38 @@
   },
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/dark.svg",
+    "href": "https://gateways.app"
   },
   "navbar": {
-    "links": [],
+    "links": [
+      {
+        "label": "Gateways Home",
+        "href": "https://gateways.app"
+      }
+    ],
     "primary": {
       "type": "button",
-      "label": "Open Gateways",
+      "label": "Open Console",
       "href": "https://console.gateways.app/login"
     }
+  },
+  "footer": {
+    "links": [
+      {
+        "header": "Gateways",
+        "items": [
+          {
+            "label": "Home",
+            "href": "https://gateways.app"
+          },
+          {
+            "label": "Console",
+            "href": "https://console.gateways.app"
+          }
+        ]
+      }
+    ]
   },
   "contextual": {
     "options": [
